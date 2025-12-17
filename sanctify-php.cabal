@@ -44,7 +44,7 @@ library
         Sanctify.Parser.Lexer
         Sanctify.Parser.Token
     build-depends:
-        base ^>=4.17,
+        base >=4.17 && <4.21,
         text >=2.0,
         containers >=0.6,
         mtl >=2.3,
@@ -73,7 +73,7 @@ executable sanctify
     import:           warnings
     main-is:          Main.hs
     build-depends:
-        base ^>=4.17,
+        base >=4.17 && <4.21,
         sanctify-php,
         text,
         optparse-applicative,
@@ -91,7 +91,7 @@ test-suite sanctify-php-test
     hs-source-dirs:   test
     main-is:          Main.hs
     build-depends:
-        base ^>=4.17,
+        base >=4.17 && <4.21,
         sanctify-php,
         hspec >=2.10,
         hspec-megaparsec >=2.2,
