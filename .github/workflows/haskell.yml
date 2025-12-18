@@ -16,14 +16,14 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-    - uses: haskell-actions/setup@0a703b53e0ecfe04a312712af19699c3d8a17c7a # v2.9.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+    - uses: haskell-actions/setup@0512451d82f3ca8c147db62e30464e7c4ca63d30 # v2.9.1
       with:
         ghc-version: '9.6'
         cabal-version: '3.10'
 
     - name: Cache
-      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       env:
         cache-name: cache-cabal
       with:
