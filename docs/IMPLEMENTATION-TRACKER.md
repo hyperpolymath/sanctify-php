@@ -9,6 +9,7 @@
 | Standalone Requirements | ✅ Complete | See STANDALONE.md |
 | Target Audience | ✅ Complete | See TARGET-AUDIENCE.md |
 | Upstream Issues | ✅ Complete | See UPSTREAM-ISSUES.md |
+| IndieWeb Collaboration | ✅ Complete | See INDIEWEB-COLLABORATION.md |
 | Binary Releases | 🔲 Not Started | **BLOCKER** - Tool cannot run without this |
 | Composer Plugin | 🔲 Not Started | **CRITICAL** - Enable `composer require` |
 | Docker Container | 🔲 Not Started | **HIGH** - Fallback for binary issues |
