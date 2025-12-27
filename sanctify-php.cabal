@@ -41,6 +41,7 @@ library
         Sanctify.Emit
         Sanctify.Config
         Sanctify.Report
+        Sanctify.Ruleset
     other-modules:
         Sanctify.Parser.Lexer
         Sanctify.Parser.Token
@@ -96,4 +97,5 @@ test-suite sanctify-php-test
         sanctify-php,
         hspec >=2.10,
         hspec-megaparsec >=2.2,
-        text
+        text,
+        containers

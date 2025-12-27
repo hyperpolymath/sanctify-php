@@ -1,0 +1,21 @@
+{
+  "rsName": "minimal-test",
+  "rsDescription": "Minimal ruleset for testing",
+  "rsExtends": null,
+  "rsRules": {
+    "SEC001": {
+      "rcEnabled": true,
+      "rcSeverity": "SeverityCritical",
+      "rcOptions": {}
+    }
+  },
+  "rsCategories": {
+    "CategorySecurity": true,
+    "CategoryDeadCode": false,
+    "CategoryTypes": false,
+    "CategoryWordPress": false,
+    "CategoryPerformance": false,
+    "CategoryStyle": false,
+    "CategoryMaintenance": false
+  }
+}

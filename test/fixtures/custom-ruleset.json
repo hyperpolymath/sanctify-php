@@ -1,0 +1,36 @@
+{
+  "rsName": "custom",
+  "rsDescription": "Custom test ruleset",
+  "rsExtends": null,
+  "rsRules": {
+    "SEC001": {
+      "rcEnabled": true,
+      "rcSeverity": "SeverityCritical",
+      "rcOptions": {}
+    },
+    "SEC002": {
+      "rcEnabled": true,
+      "rcSeverity": "SeverityCritical",
+      "rcOptions": {}
+    },
+    "DEAD001": {
+      "rcEnabled": false,
+      "rcSeverity": "SeverityWarning",
+      "rcOptions": {}
+    },
+    "DEAD002": {
+      "rcEnabled": true,
+      "rcSeverity": "SeverityError",
+      "rcOptions": {}
+    }
+  },
+  "rsCategories": {
+    "CategorySecurity": true,
+    "CategoryDeadCode": true,
+    "CategoryTypes": false,
+    "CategoryWordPress": false,
+    "CategoryPerformance": false,
+    "CategoryStyle": false,
+    "CategoryMaintenance": false
+  }
+}
