@@ -8,6 +8,7 @@
 | sanctify-php Roadmap | ✅ Complete | Begin Phase 1 |
 | Standalone Requirements | ✅ Complete | See STANDALONE.md |
 | Target Audience | ✅ Complete | See TARGET-AUDIENCE.md |
+| Upstream Issues | ✅ Complete | See UPSTREAM-ISSUES.md |
 | Binary Releases | 🔲 Not Started | **BLOCKER** - Tool cannot run without this |
 | Composer Plugin | 🔲 Not Started | **CRITICAL** - Enable `composer require` |
 | Docker Container | 🔲 Not Started | **HIGH** - Fallback for binary issues |
@@ -21,10 +22,12 @@
 
 ### Integration Evidence
 
-| Project | Could run sanctify-php? | Result |
-|---------|------------------------|--------|
-| wp-sinople-theme | ⚠️ With difficulty | Needed Haskell setup |
-| Zotpress | ❌ **NO** | GHC not available, couldn't run at all |
+| Project | Could run sanctify-php? | php-aegis Value? | Result |
+|---------|------------------------|------------------|--------|
+| wp-sinople-theme | ⚠️ With difficulty | ⚠️ Limited | Needed Haskell setup |
+| Zotpress | ❌ **NO** | ❌ None | GHC not available |
+| sinople-theme | ✅ **CI Integration** | ✅ **Turtle!** | Success with unique value focus |
+| Sinople (full) | ✅ **Real vuln found** | ✅ **Critical fix** | TurtleEscaper fixed RDF injection |
 
 > **Zotpress integration failed completely** — sanctify-php could not be executed.
 > Manual analysis was performed instead using documented patterns.

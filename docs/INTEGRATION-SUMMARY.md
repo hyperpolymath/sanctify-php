@@ -1,6 +1,6 @@
 # Integration Feedback Summary
 
-Consolidated findings from three real-world integration attempts.
+Consolidated findings from four real-world integration attempts.
 
 ---
 
@@ -11,6 +11,61 @@ Consolidated findings from three real-world integration attempts.
 | 1 | wp-sinople-theme | Semantic WP theme | ⚠️ Ran with difficulty | ⚠️ Limited value |
 | 2 | Zotpress | Mature WP plugin | ❌ **Could not run** | ❌ No value added |
 | 3 | (Metrics capture) | - | Improvements measured | Issues documented |
+| 4 | sinople-theme | Semantic WP theme | ✅ **CI integration** | ✅ **Unique value (Turtle!)** |
+| 5 | Sinople (full) | Semantic WP theme | ✅ **Real vuln found** | ✅ **TurtleEscaper fix** |
+
+### Success Story: sinople-theme
+
+The sinople-theme integration demonstrates the **correct approach**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  sinople-theme Integration: BOTH TOOLS PROVIDED VALUE       │
+│                                                             │
+│  php-aegis:                                                  │
+│    ✅ TurtleEscaper for RDF output (/feed/turtle/)          │
+│    ✅ WordPress-style function wrappers                     │
+│    ✅ Graceful fallback if php-aegis unavailable            │
+│                                                             │
+│  sanctify-php:                                               │
+│    ✅ Added to GitHub Actions CI workflow                    │
+│    ✅ AST-based security analysis                            │
+│    ✅ WordPress-specific issue detection                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key success factor**: Focus on **unique value** (Turtle escaping) not WordPress duplicates.
+
+### Major Win: Sinople Full Integration (Real Vulnerability Found)
+
+The complete Sinople integration found a **real security vulnerability**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  CRITICAL: addslashes() used for Turtle escaping            │
+│                                                             │
+│  Original code: addslashes($value) for RDF Turtle output    │
+│  Problem: addslashes() is SQL escaping, NOT Turtle escaping │
+│  Risk: RDF injection attacks possible                       │
+│                                                             │
+│  Fix: TurtleEscaper::literal() + TurtleEscaper::iri()       │
+│  Result: W3C-compliant Turtle escaping                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Security Fixes Applied**:
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| CRITICAL | addslashes() for Turtle | TurtleEscaper::literal() |
+| CRITICAL | IRI without validation | Validator::url() + error handling |
+| HIGH | URL validation via strpos() | parse_url() host comparison |
+| HIGH | Unsanitized Micropub input | sanitize_text_field() + wp_kses_post() |
+| MEDIUM | No security headers | CSP, HSTS, X-Frame-Options |
+| MEDIUM | No rate limiting | 1-min rate limit for Webmentions |
+| LOW | Missing strict_types | Added to all PHP files |
+
+**This proves**: When focused on unique value (Turtle escaping), php-aegis finds and fixes real vulnerabilities that WordPress cannot address.
 
 ---
 
