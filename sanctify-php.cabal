@@ -32,6 +32,7 @@ library
         Sanctify.Analysis.Security
         Sanctify.Analysis.Types
         Sanctify.Analysis.Taint
+        Sanctify.Analysis.DeadCode
         Sanctify.Transform.StrictTypes
         Sanctify.Transform.TypeHints
         Sanctify.Transform.Sanitize
