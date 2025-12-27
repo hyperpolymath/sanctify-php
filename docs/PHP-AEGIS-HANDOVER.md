@@ -2,10 +2,43 @@
 
 ## Context
 
-This document provides integration feedback from the wp-sinople-theme WordPress theme project, which attempted to use both `sanctify-php` (static analysis) and `php-aegis` (runtime security library) together.
+This document provides integration feedback from multiple WordPress projects:
+1. **wp-sinople-theme** - Semantic theme with IndieWeb/Micropub support
+2. **Zotpress** - Mature WordPress plugin (already well-secured)
 
 **Integration Report Date**: 2025-12-27
-**Integration Target**: WordPress semantic theme with IndieWeb/Micropub support
+
+---
+
+## Executive Summary
+
+### The Core Problem
+
+**php-aegis duplicates WordPress core functionality** without providing additional value for WordPress projects.
+
+| php-aegis | WordPress Equivalent | Winner |
+|-----------|---------------------|--------|
+| `Validator::email()` | `is_email()` | WordPress (more edge cases) |
+| `Validator::url()` | `wp_http_validate_url()` | WordPress (protocol-aware) |
+| `Sanitizer::html()` | `esc_html()` | WordPress (context-aware) |
+| `Sanitizer::stripTags()` | `wp_strip_all_tags()` | WordPress (more thorough) |
+| Generic escaping | `esc_html()`, `esc_attr()`, `esc_url()`, `esc_js()` | **WordPress (context-specific)** |
+
+### Strategic Decision Required
+
+php-aegis must choose a positioning:
+
+**Option A: Non-WordPress PHP Library**
+- Document that php-aegis is for Laravel, Symfony, vanilla PHP
+- Don't compete with WordPress's mature security APIs
+- Focus on frameworks that lack built-in security
+
+**Option B: WordPress Superset Library**
+- Provide capabilities WordPress lacks (semantic web, IndieWeb, ActivityPub)
+- Integrate with (not replace) WordPress functions
+- Be additive, not duplicative
+
+**Recommendation: Option B** — Provide unique value WordPress lacks.
 
 ---
 
@@ -15,18 +48,47 @@ This document provides integration feedback from the wp-sinople-theme WordPress 
 
 | Issue | Severity | Impact |
 |-------|----------|--------|
+| Duplicates WordPress core | **Critical** | No value add for WP projects |
+| Lacks context-aware escaping | **Critical** | WP has html/attr/url/js contexts, Aegis has generic |
 | PHP 8.1+ blocks WordPress adoption | **Critical** | WordPress 6.4 supports PHP 7.4+, most hosts still on 7.4/8.0 |
 | No WordPress adapter | High | camelCase API vs snake_case WordPress conventions |
 | Feature set too minimal | Medium | WordPress has equivalent functions already |
 | No RDF/Turtle escaping | High | Semantic themes require W3C-compliant escaping |
-| Limited validators | Medium | Only email/url - missing int(), ip(), domain() |
+| Limited validators | Medium | Only email/url - missing int(), ip(), domain(), uuid(), credit_card() |
 | Missing SPDX license headers | Low | Compliance concern for FOSS projects |
+
+### What Mature WordPress Projects Already Have
+
+The Zotpress integration revealed that well-maintained WordPress plugins already:
+- ✅ Have ABSPATH protection on all files
+- ✅ Use prepared statements for all database queries
+- ✅ Verify nonces on AJAX handlers
+- ✅ Sanitize input and escape output throughout
+- ✅ Follow WordPress coding standards
+
+**Conclusion**: php-aegis provides no value for these projects unless it offers something WordPress doesn't.
 
 ---
 
 ## Detailed Recommendations
 
-### 0. CRITICAL: PHP 7.4+ Compatibility Layer
+### 0. CRITICAL: Define Target Audience
+
+Before any implementation, php-aegis must answer:
+
+> **Who is this library for?**
+
+| Audience | Should php-aegis target? | Why |
+|----------|-------------------------|-----|
+| WordPress plugins/themes | Only if offering unique value | WP core already handles standard security |
+| Laravel applications | Yes | Laravel has security but less comprehensive |
+| Symfony applications | Yes | Similar to Laravel |
+| Vanilla PHP | Yes | No built-in security |
+| Semantic web apps | **Yes - unique opportunity** | No existing library handles RDF/Turtle |
+| IndieWeb apps | **Yes - unique opportunity** | Micropub/Webmention security not solved |
+| ActivityPub/Fediverse | **Yes - unique opportunity** | Complex content policies needed |
+
+### 1. CRITICAL: PHP 7.4+ Compatibility Layer
 
 **Problem**: php-aegis requires PHP 8.1+, but WordPress ecosystem reality:
 - WordPress 6.4+ officially supports PHP 7.4+

@@ -2,10 +2,30 @@
 
 ## Context
 
-This roadmap addresses integration feedback from real-world deployment in the wp-sinople-theme WordPress project, which uses semantic web (RDF/Turtle) output and IndieWeb protocols.
+This roadmap addresses integration feedback from real-world deployment:
+1. **wp-sinople-theme** - Semantic theme with IndieWeb/Micropub support
+2. **Zotpress** - Mature WordPress plugin (couldn't run sanctify-php at all)
 
 **Feedback Date**: 2025-12-27
 **Current Version**: 0.1.0.0
+
+---
+
+## Critical Finding: Tool Unusable Without Binaries
+
+### Zotpress Integration Failure
+
+> **sanctify-php could not be run at all** because GHC (Haskell compiler) was not available.
+> Manual analysis was performed instead using documented patterns.
+
+This confirms the #1 adoption blocker: **the Haskell build requirement prevents any usage**.
+
+### Evidence from Integration Attempts
+
+| Project | Could run sanctify-php? | Outcome |
+|---------|------------------------|---------|
+| wp-sinople-theme | ⚠️ With difficulty | Required Haskell setup |
+| Zotpress | ❌ **No** | GHC not available, manual analysis only |
 
 ---
 
@@ -13,11 +33,11 @@ This roadmap addresses integration feedback from real-world deployment in the wp
 
 | Issue | Severity | User Impact |
 |-------|----------|-------------|
-| Requires Haskell toolchain | **Critical** | Most PHP devs can't build/run sanctify-php |
+| Requires Haskell toolchain | **BLOCKER** | Tool literally cannot run |
 | No `composer require` install | **Critical** | PHP devs expect Composer installation |
+| No pre-built binaries | **Critical** | No workaround for GHC requirement |
+| No Docker container | High | Alternative deployment path missing |
 | No GitHub Action | High | No easy CI/CD integration |
-| No pre-built binaries | High | Installation friction prevents adoption |
-| No Docker container | Medium | Alternative deployment path missing |
 | No incremental analysis | Medium | Full rescan on every change is slow |
 | No RDF/Turtle awareness | High | Semantic themes get false negatives |
 | Limited PHP 8.x syntax | Medium | May miss some modern PHP patterns |
@@ -25,9 +45,10 @@ This roadmap addresses integration feedback from real-world deployment in the wp
 
 ### Key Insight
 
-> **The biggest barrier to sanctify-php adoption is the Haskell dependency.**
-> PHP developers expect `composer require` installation with no external runtime.
-> The solution is a Composer plugin that downloads pre-built binaries.
+> **The Haskell dependency is a BLOCKER, not just an inconvenience.**
+> In the Zotpress integration, the tool could not be used at all.
+> PHP developers cannot and will not install GHC.
+> **Pre-built binaries are not optional — they are required for any adoption.**
 
 ---
 
