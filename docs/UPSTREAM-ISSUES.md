@@ -229,6 +229,86 @@ The `sanctify export --guix` command is documented but the output format and usa
 
 ---
 
+## Issues from Sinople Full Integration
+
+### php-aegis Issues (from Sinople)
+
+#### Issue 5: WordPress-Specific Validators Needed
+
+**Severity**: Medium
+**Found in**: Sinople full integration
+
+**Description**:
+WordPress has security patterns (nonces, capabilities) that php-aegis doesn't address.
+
+**Needed validators**:
+```php
+Aegis\WordPress\Nonce::verify($action, $nonce);
+Aegis\WordPress\Capability::check($cap, $user_id);
+```
+
+---
+
+#### Issue 6: TurtleEscaper Language Tag Case Sensitivity
+
+**Severity**: Low
+**Found in**: Sinople full integration
+
+**Description**:
+Language tags in Turtle should be case-insensitive per BCP 47, but TurtleEscaper may not handle this correctly.
+
+---
+
+#### Issue 7: Headers Class WordPress Integration
+
+**Severity**: Low
+**Found in**: Sinople full integration
+
+**Description**:
+`Headers::secure()` doesn't integrate with WordPress's `send_headers` action.
+
+**Recommended**:
+```php
+add_action('send_headers', [Headers::class, 'secure']);
+```
+
+---
+
+### sanctify-php Issues (from Sinople)
+
+#### Issue 5: WordPress Hook Detection
+
+**Severity**: Medium
+**Found in**: Sinople full integration
+
+**Description**:
+sanctify-php should detect WordPress hooks (`add_action`, `add_filter`) and reduce false positives when code is wrapped in hook callbacks.
+
+---
+
+#### Issue 6: RDF Turtle as Distinct Output Context
+
+**Severity**: High
+**Found in**: Sinople full integration
+
+**Description**:
+Turtle output is a distinct context from HTML. sanctify-php should:
+- Detect `Content-Type: text/turtle`
+- Warn when `esc_html()` is used in Turtle context
+- Suggest `TurtleEscaper` instead
+
+---
+
+#### Issue 7: WordPress REST API Pattern Recognition
+
+**Severity**: Medium
+**Found in**: Sinople full integration
+
+**Description**:
+WordPress REST API endpoints have specific sanitization patterns that sanctify-php should recognize.
+
+---
+
 ## Tracking
 
 | Issue | Repository | Reported | Status |
@@ -237,10 +317,16 @@ The `sanctify export --guix` command is documented but the output format and usa
 | Not on Packagist | php-aegis | 🔲 Pending | - |
 | mu-plugin not implemented | php-aegis | 🔲 Pending | - |
 | Missing Permissions-Policy | php-aegis | 🔲 Pending | - |
+| WordPress validators needed | php-aegis | 🔲 Pending | - |
+| TurtleEscaper lang tag case | php-aegis | 🔲 Pending | - |
+| Headers WP integration | php-aegis | 🔲 Pending | - |
 | UnsafeRedirect false positive | sanctify-php | 🔲 Pending | - |
 | MissingTextDomain false positive | sanctify-php | 🔲 Pending | - |
 | PHP 8.1+ syntax verification | sanctify-php | 🔲 Pending | - |
 | Guix export docs incomplete | sanctify-php | 🔲 Pending | - |
+| WordPress hook detection | sanctify-php | 🔲 Pending | - |
+| Turtle as output context | sanctify-php | 🔲 Pending | - |
+| REST API pattern recognition | sanctify-php | 🔲 Pending | - |
 
 ---
 

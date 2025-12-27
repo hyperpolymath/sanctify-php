@@ -27,6 +27,7 @@
 | wp-sinople-theme | ⚠️ With difficulty | ⚠️ Limited | Needed Haskell setup |
 | Zotpress | ❌ **NO** | ❌ None | GHC not available |
 | sinople-theme | ✅ **CI Integration** | ✅ **Turtle!** | Success with unique value focus |
+| Sinople (full) | ✅ **Real vuln found** | ✅ **Critical fix** | TurtleEscaper fixed RDF injection |
 
 > **Zotpress integration failed completely** — sanctify-php could not be executed.
 > Manual analysis was performed instead using documented patterns.
