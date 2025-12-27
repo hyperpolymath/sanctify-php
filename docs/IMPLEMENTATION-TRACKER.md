@@ -6,9 +6,37 @@
 |------|--------|-------------|
 | php-aegis Handover | ✅ Complete | Send to php-aegis team |
 | sanctify-php Roadmap | ✅ Complete | Begin Phase 1 |
-| Binary Releases | 🔲 Not Started | Create CI workflow |
+| Standalone Requirements | ✅ Complete | See STANDALONE.md |
+| Binary Releases | 🔲 Not Started | **CRITICAL** - Create CI workflow |
+| Composer Plugin | 🔲 Not Started | **CRITICAL** - Enable `composer require` |
+| GitHub Action | 🔲 Not Started | High priority |
 | Docker Container | 🔲 Not Started | Create Dockerfile |
+| Incremental Analysis | 🔲 Not Started | Cache for performance |
 | Semantic Support | 🔲 Not Started | Design AST extensions |
+
+---
+
+## Critical Path: Adoption Blockers
+
+> **Key Insight**: The biggest barrier to adoption is the Haskell dependency.
+> PHP developers expect `composer require` installation with no external runtime.
+
+### sanctify-php Critical Items
+
+| Item | Priority | Blocks |
+|------|----------|--------|
+| Pre-built binaries | **CRITICAL** | Everything else |
+| Composer plugin wrapper | **CRITICAL** | PHP dev adoption |
+| GitHub Action | High | CI/CD adoption |
+| Incremental analysis | Medium | Performance at scale |
+
+### php-aegis Critical Items
+
+| Item | Priority | Blocks |
+|------|----------|--------|
+| php-aegis-compat (PHP 7.4+) | **CRITICAL** | WordPress adoption |
+| WordPress adapter (snake_case) | High | WP dev experience |
+| Extended validators | Medium | Common use cases |
 
 ---
 
@@ -17,19 +45,28 @@
 ### For php-aegis Team
 
 1. **Review handover document**: `docs/PHP-AEGIS-HANDOVER.md`
-2. **Priority implementation**:
-   - `Aegis\Semantic\Turtle::escapeString()`
-   - `Aegis\Semantic\Turtle::escapeIRI()`
-   - SPDX headers on all files
+2. **Critical implementation** (adoption blockers):
+   - [ ] Create `php-aegis-compat` package for PHP 7.4+
+   - [ ] Add WordPress adapter with snake_case functions
+   - [ ] Extend `Validate` class: `int()`, `ip()`, `domain()`
+3. **Priority implementation** (unique value):
+   - [ ] `Aegis\Semantic\Turtle::escapeString()`
+   - [ ] `Aegis\Semantic\Turtle::escapeIRI()`
+   - [ ] SPDX headers on all files
 
 ### For sanctify-php Team
 
-1. **Phase 1 Priority**: Make tool accessible without Haskell
-   - [ ] GitHub Actions for binary releases
+1. **Phase 1 CRITICAL**: Enable `composer require` installation
+   - [ ] GitHub Actions for binary releases (linux, darwin x86_64/arm64)
+   - [ ] Composer plugin that auto-downloads binary on install
+   - [ ] GitHub Action for CI/CD integration
    - [ ] Dockerfile for container distribution
-   - [ ] Update README with installation options
 
-2. **Phase 2 Priority**: Semantic web support
+2. **Phase 1 HIGH**: Performance
+   - [ ] Incremental analysis with file hash cache
+   - [ ] Only rescan changed files
+
+3. **Phase 2 Priority**: Semantic web support
    - [ ] Create `Sanctify.Analysis.Semantic` module
    - [ ] Extend taint sinks for Turtle/JSON-LD contexts
    - [ ] Add WordPress semantic theme detection

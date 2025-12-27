@@ -13,12 +13,21 @@ This roadmap addresses integration feedback from real-world deployment in the wp
 
 | Issue | Severity | User Impact |
 |-------|----------|-------------|
-| Requires Haskell toolchain | High | Most PHP devs can't build/run sanctify-php |
+| Requires Haskell toolchain | **Critical** | Most PHP devs can't build/run sanctify-php |
+| No `composer require` install | **Critical** | PHP devs expect Composer installation |
+| No GitHub Action | High | No easy CI/CD integration |
 | No pre-built binaries | High | Installation friction prevents adoption |
 | No Docker container | Medium | Alternative deployment path missing |
+| No incremental analysis | Medium | Full rescan on every change is slow |
 | No RDF/Turtle awareness | High | Semantic themes get false negatives |
 | Limited PHP 8.x syntax | Medium | May miss some modern PHP patterns |
 | Missing WP integration docs | Medium | Users don't know how to integrate |
+
+### Key Insight
+
+> **The biggest barrier to sanctify-php adoption is the Haskell dependency.**
+> PHP developers expect `composer require` installation with no external runtime.
+> The solution is a Composer plugin that downloads pre-built binaries.
 
 ---
 
@@ -99,7 +108,247 @@ docker run --rm -v $(pwd):/src ghcr.io/hyperpolymath/sanctify-php analyze /src
 docker run --rm -v $(pwd):/src ghcr.io/hyperpolymath/sanctify-php report /src --format=sarif
 ```
 
-### 1.3 Guix Package
+### 1.3 Composer Plugin Wrapper (Critical Path)
+
+PHP developers expect `composer require`. Provide a Composer plugin that:
+1. Detects platform (OS/arch)
+2. Downloads the appropriate pre-built binary
+3. Provides Composer scripts integration
+
+**Package Structure**:
+```
+sanctify-php-composer/
+├── composer.json
+├── src/
+│   ├── Plugin.php           # Composer plugin hooks
+│   ├── BinaryInstaller.php  # Platform detection & download
+│   └── ScriptHandler.php    # Composer scripts integration
+└── bin/
+    └── sanctify-php         # Wrapper script
+```
+
+**composer.json**:
+```json
+{
+    "name": "hyperpolymath/sanctify-php",
+    "description": "PHP security analysis and hardening tool",
+    "type": "composer-plugin",
+    "require": {
+        "php": ">=7.4",
+        "composer-plugin-api": "^2.0"
+    },
+    "require-dev": {
+        "composer/composer": "^2.0"
+    },
+    "autoload": {
+        "psr-4": { "Sanctify\\Composer\\": "src/" }
+    },
+    "extra": {
+        "class": "Sanctify\\Composer\\Plugin",
+        "sanctify-binaries": {
+            "linux-x86_64": "https://github.com/hyperpolymath/sanctify-php/releases/download/v{version}/sanctify-php-linux-x86_64",
+            "darwin-x86_64": "https://github.com/hyperpolymath/sanctify-php/releases/download/v{version}/sanctify-php-darwin-x86_64",
+            "darwin-arm64": "https://github.com/hyperpolymath/sanctify-php/releases/download/v{version}/sanctify-php-darwin-aarch64"
+        }
+    },
+    "scripts": {
+        "sanctify:analyze": "Sanctify\\Composer\\ScriptHandler::analyze",
+        "sanctify:fix": "Sanctify\\Composer\\ScriptHandler::fix",
+        "sanctify:report": "Sanctify\\Composer\\ScriptHandler::report"
+    },
+    "bin": ["bin/sanctify-php"]
+}
+```
+
+**BinaryInstaller.php**:
+```php
+<?php
+declare(strict_types=1);
+// SPDX-License-Identifier: MIT
+
+namespace Sanctify\Composer;
+
+use Composer\Composer;
+use Composer\IO\IOInterface;
+
+final class BinaryInstaller
+{
+    private const BINARY_DIR = 'vendor/bin';
+
+    public static function install(Composer $composer, IOInterface $io): void
+    {
+        $platform = self::detectPlatform();
+        $version = self::getVersion($composer);
+        $url = self::getBinaryUrl($composer, $platform, $version);
+
+        $io->write("<info>Downloading sanctify-php for {$platform}...</info>");
+
+        $binPath = self::BINARY_DIR . '/sanctify-php-bin';
+        self::download($url, $binPath);
+        chmod($binPath, 0755);
+
+        $io->write("<info>sanctify-php installed successfully.</info>");
+    }
+
+    private static function detectPlatform(): string
+    {
+        $os = PHP_OS_FAMILY === 'Darwin' ? 'darwin' : 'linux';
+        $arch = php_uname('m') === 'arm64' ? 'arm64' : 'x86_64';
+        return "{$os}-{$arch}";
+    }
+
+    private static function download(string $url, string $dest): void
+    {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $binary = curl_exec($ch);
+        curl_close($ch);
+        file_put_contents($dest, $binary);
+    }
+}
+```
+
+**Usage after installation**:
+```bash
+# Install
+composer require --dev hyperpolymath/sanctify-php
+
+# Use via Composer scripts
+composer sanctify:analyze src/
+composer sanctify:fix src/ -- --policy=conservative
+composer sanctify:report src/ -- --format=sarif
+
+# Or directly
+vendor/bin/sanctify-php analyze src/
+```
+
+### 1.4 GitHub Action
+
+Official GitHub Action for CI/CD:
+
+```yaml
+# .github/actions/sanctify-php/action.yml
+name: 'Sanctify PHP'
+description: 'PHP security analysis and hardening'
+branding:
+  icon: 'shield'
+  color: 'green'
+
+inputs:
+  path:
+    description: 'Path to analyze'
+    required: true
+    default: 'src'
+  format:
+    description: 'Output format (text, json, sarif, html, markdown)'
+    required: false
+    default: 'sarif'
+  fail-on:
+    description: 'Fail on severity level (critical, high, medium, low, none)'
+    required: false
+    default: 'high'
+  upload-sarif:
+    description: 'Upload SARIF to GitHub Security tab'
+    required: false
+    default: 'true'
+
+outputs:
+  issues-found:
+    description: 'Number of security issues found'
+    value: ${{ steps.analyze.outputs.issues }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download sanctify-php
+      shell: bash
+      run: |
+        curl -LO https://github.com/hyperpolymath/sanctify-php/releases/latest/download/sanctify-php-linux-x86_64
+        chmod +x sanctify-php-linux-x86_64
+        sudo mv sanctify-php-linux-x86_64 /usr/local/bin/sanctify-php
+
+    - name: Run analysis
+      id: analyze
+      shell: bash
+      run: |
+        sanctify-php analyze ${{ inputs.path }} \
+          --format=${{ inputs.format }} \
+          --output=sanctify-results.${{ inputs.format }} \
+          --fail-on=${{ inputs.fail-on }}
+        echo "issues=$(sanctify-php analyze ${{ inputs.path }} --format=json | jq '.issues | length')" >> $GITHUB_OUTPUT
+
+    - name: Upload SARIF
+      if: inputs.upload-sarif == 'true' && inputs.format == 'sarif'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: sanctify-results.sarif
+```
+
+**Usage in workflows**:
+```yaml
+name: Security
+on: [push, pull_request]
+
+jobs:
+  sanctify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hyperpolymath/sanctify-php-action@v1
+        with:
+          path: src/
+          fail-on: high
+```
+
+### 1.5 Incremental Analysis
+
+Cache analysis results and only rescan changed files:
+
+```haskell
+-- src/Sanctify/Cache.hs
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Sanctify.Cache
+  ( AnalysisCache(..)
+  , loadCache
+  , saveCache
+  , getChangedFiles
+  ) where
+
+import qualified Data.Map.Strict as Map
+import Crypto.Hash (SHA256, hash)
+
+data AnalysisCache = AnalysisCache
+  { cacheVersion :: Text
+  , fileHashes :: Map FilePath Text  -- path -> SHA256
+  , cachedResults :: Map FilePath [SecurityIssue]
+  }
+  deriving (Generic, FromJSON, ToJSON)
+
+-- Determine which files need re-analysis
+getChangedFiles :: AnalysisCache -> [FilePath] -> IO [FilePath]
+getChangedFiles cache files = do
+  filterM (hasChanged cache) files
+  where
+    hasChanged c f = do
+      currentHash <- hashFile f
+      pure $ Map.lookup f (fileHashes c) /= Just currentHash
+```
+
+**CLI usage**:
+```bash
+# First run: full analysis, creates .sanctify-cache.json
+sanctify-php analyze src/
+
+# Subsequent runs: only analyze changed files
+sanctify-php analyze src/ --incremental
+
+# Force full rescan
+sanctify-php analyze src/ --no-cache
+```
+
+### 1.6 Guix Package
 
 Proper Guix package definition for reproducible builds:
 
