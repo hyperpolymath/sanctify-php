@@ -7,19 +7,36 @@
 | php-aegis Handover | ✅ Complete | Send to php-aegis team |
 | sanctify-php Roadmap | ✅ Complete | Begin Phase 1 |
 | Standalone Requirements | ✅ Complete | See STANDALONE.md |
-| Binary Releases | 🔲 Not Started | **CRITICAL** - Create CI workflow |
+| Target Audience | ✅ Complete | See TARGET-AUDIENCE.md |
+| Binary Releases | 🔲 Not Started | **BLOCKER** - Tool cannot run without this |
 | Composer Plugin | 🔲 Not Started | **CRITICAL** - Enable `composer require` |
+| Docker Container | 🔲 Not Started | **HIGH** - Fallback for binary issues |
 | GitHub Action | 🔲 Not Started | High priority |
-| Docker Container | 🔲 Not Started | Create Dockerfile |
 | Incremental Analysis | 🔲 Not Started | Cache for performance |
 | Semantic Support | 🔲 Not Started | Design AST extensions |
 
 ---
 
+## Critical Finding: GHC Requirement is a BLOCKER
+
+### Integration Evidence
+
+| Project | Could run sanctify-php? | Result |
+|---------|------------------------|--------|
+| wp-sinople-theme | ⚠️ With difficulty | Needed Haskell setup |
+| Zotpress | ❌ **NO** | GHC not available, couldn't run at all |
+
+> **Zotpress integration failed completely** — sanctify-php could not be executed.
+> Manual analysis was performed instead using documented patterns.
+> This is not an inconvenience — it's a **total adoption blocker**.
+
+---
+
 ## Critical Path: Adoption Blockers
 
-> **Key Insight**: The biggest barrier to adoption is the Haskell dependency.
-> PHP developers expect `composer require` installation with no external runtime.
+> **Key Insight**: The Haskell dependency is a BLOCKER, not just an inconvenience.
+> In real-world integrations, the tool literally could not be used.
+> PHP developers cannot and will not install GHC.
 
 ### sanctify-php Critical Items
 
