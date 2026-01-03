@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:dc="http://purl.org/dc/elements/1.1/"
+         xmlns:dcterms="http://purl.org/dc/terms/">
+  <rdf:Description rdf:about="https://github.com/hyperpolymath/sanctify-php">
+    <dc:title>sanctify-php</dc:title>
+    <dc:creator>Jonathan D.A. Jewell</dc:creator>
+    <dc:subject>Static Analysis</dc:subject>
+    <dc:subject>PHP Security</dc:subject>
+    <dc:subject>Code Transformation</dc:subject>
+    <dc:subject>Taint Tracking</dc:subject>
+    <dc:description>Haskell-based PHP hardening and security analysis tool with taint tracking, type inference, and automatic transformations</dc:description>
+    <dc:publisher>Hyperpolymath</dc:publisher>
+    <dc:type>Software</dc:type>
+    <dc:format>application/x-haskell</dc:format>
+    <dc:identifier>https://github.com/hyperpolymath/sanctify-php</dc:identifier>
+    <dc:language>en</dc:language>
+    <dc:rights>AGPL-3.0-or-later</dc:rights>
+    <dcterms:license rdf:resource="https://www.gnu.org/licenses/agpl-3.0"/>
+    <dcterms:conformsTo rdf:resource="https://github.com/hyperpolymath/rhodium-standard-repositories"/>
+  </rdf:Description>
+</rdf:RDF>

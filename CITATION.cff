@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+cff-version: 1.2.0
+title: sanctify-php
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: Jewell
+    given-names: Jonathan D.A.
+repository-code: "https://github.com/hyperpolymath/sanctify-php"
+url: "https://github.com/hyperpolymath/sanctify-php"
+abstract: >-
+  Haskell-based PHP hardening and security analysis tool.
+  Performs taint tracking, type inference, security vulnerability
+  detection (SQLi, XSS, CSRF, command injection), and automatic
+  code transformations for safer PHP.
+keywords:
+  - php
+  - static-analysis
+  - security
+  - haskell
+  - taint-tracking
+  - wordpress
+license: AGPL-3.0-or-later
+version: "0.1.0"
+date-released: "2025-01-03"
