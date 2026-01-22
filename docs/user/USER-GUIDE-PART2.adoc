@@ -1,0 +1,663 @@
+= Sanctify-PHP User Guide - Part 2: Advanced Features
+:toc: left
+:toclevels: 4
+:icons: font
+:source-highlighter: rouge
+
+link:USER-GUIDE.adoc[← Back to Part 1]
+
+== Advanced Vulnerability Detection
+
+=== ReDoS (Regular Expression Denial of Service)
+
+**CWE-1333**: Catastrophic backtracking in regular expressions.
+
+**Detection**:
+----
+<?php
+// VULNERABLE: Nested quantifiers
+preg_match('/(.*)*/i', $input);
+
+// VULNERABLE: Catastrophic backtracking
+preg_match('/(.+)+/i', $input);
+
+// VULNERABLE: Multiple overlapping patterns
+preg_match('/(a+)+b/i', $input);
+----
+
+**Fix**:
+----
+<?php
+// SAFE: Atomic grouping
+preg_match('/(?>.*)/i', $input);
+
+// SAFE: Possessive quantifiers
+preg_match('/.*+/i', $input);
+
+// SAFE: More specific patterns
+preg_match('/[a-zA-Z0-9]+/i', $input);
+----
+
+=== SSRF (Server-Side Request Forgery)
+
+**CWE-918**: Application fetches remote resources with user-controlled URLs.
+
+**Detection**:
+----
+<?php
+// VULNERABLE
+$url = $_GET['url'];
+$response = file_get_contents($url);
+
+// VULNERABLE
+$url = $_POST['api_url'];
+wp_remote_get($url);
+----
+
+**Fix**:
+----
+<?php
+// SAFE: Whitelist allowed domains
+$allowed_domains = ['api.example.com', 'cdn.example.com'];
+$parsed = parse_url($_GET['url']);
+if (!in_array($parsed['host'], $allowed_domains)) {
+    wp_die('Unauthorized domain');
+}
+$response = wp_remote_get($_GET['url']);
+
+// SAFE: Validate URL scheme
+if (!str_starts_with($_POST['api_url'], 'https://')) {
+    wp_die('Only HTTPS URLs allowed');
+}
+----
+
+=== XXE (XML External Entity Injection)
+
+**CWE-611**: XML parser processes external entities, leading to file disclosure or SSRF.
+
+**Detection**:
+----
+<?php
+// VULNERABLE
+$doc = new DOMDocument();
+$doc->loadXML($_POST['xml']);
+
+// VULNERABLE
+$xml = simplexml_load_string($_POST['data']);
+----
+
+**Fix**:
+----
+<?php
+// SAFE: Disable external entities
+libxml_disable_entity_loader(true);
+$doc = new DOMDocument();
+$doc->loadXML($_POST['xml'], LIBXML_NONET);
+
+// SAFE: Or use JSON instead of XML
+$data = json_decode($_POST['data'], true);
+----
+
+=== TOCTOU (Time-of-Check-Time-of-Use)
+
+**CWE-367**: Race condition between checking a condition and using it.
+
+**Detection**:
+----
+<?php
+// VULNERABLE
+if (current_user_can('edit_posts')) {
+    // Time gap - capability could change
+    sleep(1);
+    wp_update_post(['ID' => $post_id, 'post_content' => $content]);
+}
+
+// VULNERABLE
+if (file_exists($path)) {
+    // File could be deleted or replaced here
+    $contents = file_get_contents($path);
+}
+----
+
+**Fix**:
+----
+<?php
+// SAFE: Check capability atomically
+if (!current_user_can('edit_posts')) {
+    wp_die('Unauthorized');
+}
+wp_update_post(['ID' => $post_id, 'post_content' => $content]);
+
+// SAFE: Use file locking
+$fp = fopen($path, 'r');
+if (flock($fp, LOCK_SH)) {
+    $contents = fread($fp, filesize($path));
+    flock($fp, LOCK_UN);
+}
+fclose($fp);
+----
+
+=== Timing Attacks
+
+**CWE-208**: Response times reveal information about internal state.
+
+**Detection**:
+----
+<?php
+// VULNERABLE: Early return reveals password length
+function verify_password($input, $correct) {
+    if (strlen($input) !== strlen($correct)) {
+        return false;  // Timing leak
+    }
+    for ($i = 0; $i < strlen($input); $i++) {
+        if ($input[$i] !== $correct[$i]) {
+            return false;  // Timing leak
+        }
+    }
+    return true;
+}
+----
+
+**Fix**:
+----
+<?php
+// SAFE: Constant-time comparison
+function verify_password($input, $correct) {
+    return hash_equals($correct, $input);
+}
+
+// Or use WordPress function
+wp_check_password($input, $hashed_password);
+----
+
+=== Object Injection
+
+**CWE-502**: Unsafe deserialization of user-controlled data.
+
+**Detection**:
+----
+<?php
+// VULNERABLE
+$data = unserialize($_COOKIE['user_data']);
+
+// VULNERABLE
+$obj = unserialize(base64_decode($_GET['state']));
+----
+
+**Fix**:
+----
+<?php
+// SAFE: Use JSON instead
+$data = json_decode($_COOKIE['user_data'], true);
+
+// SAFE: Validate class before unserialize
+$allowed_classes = ['UserData', 'SessionInfo'];
+$obj = unserialize($_GET['state'], ['allowed_classes' => $allowed_classes]);
+----
+
+== WordPress-Specific Features
+
+=== Nonce Verification
+
+Sanctify-PHP detects missing nonce verification in form handlers.
+
+**Pattern Detection**:
+----
+<?php
+// DETECTED: Missing nonce
+if ($_POST['action'] == 'save_settings') {
+    update_option('my_setting', $_POST['value']);
+}
+
+// DETECTED: AJAX handler without nonce
+add_action('wp_ajax_my_action', 'handle_my_action');
+function handle_my_action() {
+    $post_id = $_POST['post_id'];
+    wp_update_post(['ID' => $post_id]);
+}
+----
+
+**Recommended Fix**:
+----
+<?php
+// SAFE: Nonce verification
+if ($_POST['action'] == 'save_settings') {
+    if (!wp_verify_nonce($_POST['_wpnonce'], 'save_settings')) {
+        wp_die('Invalid nonce');
+    }
+    update_option('my_setting', sanitize_text_field($_POST['value']));
+}
+
+// SAFE: AJAX with nonce
+add_action('wp_ajax_my_action', 'handle_my_action');
+function handle_my_action() {
+    check_ajax_referer('my_action', 'nonce');
+    $post_id = absint($_POST['post_id']);
+    wp_update_post(['ID' => $post_id]);
+}
+----
+
+=== Capability Checks
+
+Sanctify-PHP detects privileged operations without capability checks.
+
+**Pattern Detection**:
+----
+<?php
+// DETECTED: Admin action without check
+function delete_all_posts() {
+    $wpdb->query("DELETE FROM {$wpdb->posts}");
+}
+
+// DETECTED: User management without check
+function promote_user($user_id) {
+    $user = new WP_User($user_id);
+    $user->set_role('administrator');
+}
+----
+
+**Recommended Fix**:
+----
+<?php
+// SAFE: Check capability
+function delete_all_posts() {
+    if (!current_user_can('manage_options')) {
+        wp_die('Unauthorized');
+    }
+    $wpdb->query("DELETE FROM {$wpdb->posts}");
+}
+
+// SAFE: Granular capability
+function promote_user($user_id) {
+    if (!current_user_can('promote_users')) {
+        wp_die('Unauthorized');
+    }
+    $user = new WP_User($user_id);
+    $user->set_role('administrator');
+}
+----
+
+**Capability Reference**:
+
+[cols="2,3"]
+|===
+|Capability |Use Case
+
+|`manage_options`
+|Settings changes, plugin config
+
+|`edit_posts`
+|Content creation/editing
+
+|`publish_posts`
+|Content publishing
+
+|`delete_posts`
+|Content deletion
+
+|`edit_users`
+|User profile editing
+
+|`create_users`
+|User creation
+
+|`delete_users`
+|User deletion
+
+|`promote_users`
+|Role changes
+
+|`install_plugins`
+|Plugin installation
+
+|`activate_plugins`
+|Plugin activation
+
+|`edit_theme_options`
+|Theme/appearance changes
+|===
+
+=== REST API Security
+
+Sanctify-PHP detects insecure REST API endpoints.
+
+**Pattern Detection**:
+----
+<?php
+// DETECTED: No permission callback
+register_rest_route('myplugin/v1', '/posts', [
+    'methods' => 'POST',
+    'callback' => 'create_post'
+]);
+
+// DETECTED: Open read endpoint with sensitive data
+register_rest_route('myplugin/v1', '/users', [
+    'methods' => 'GET',
+    'callback' => 'get_all_users',
+    'permission_callback' => '__return_true'  // Too permissive
+]);
+----
+
+**Recommended Fix**:
+----
+<?php
+// SAFE: Permission callback
+register_rest_route('myplugin/v1', '/posts', [
+    'methods' => 'POST',
+    'callback' => 'create_post',
+    'permission_callback' => function() {
+        return current_user_can('edit_posts');
+    }
+]);
+
+// SAFE: Granular permission
+register_rest_route('myplugin/v1', '/users', [
+    'methods' => 'GET',
+    'callback' => 'get_all_users',
+    'permission_callback' => function() {
+        return current_user_can('list_users');
+    }
+]);
+----
+
+=== File Upload Security
+
+Sanctify-PHP detects unsafe file upload handling.
+
+**Pattern Detection**:
+----
+<?php
+// DETECTED: No file type validation
+move_uploaded_file($_FILES['file']['tmp_name'], $upload_dir . '/' . $_FILES['file']['name']);
+
+// DETECTED: Extension check only
+if (str_ends_with($_FILES['file']['name'], '.jpg')) {
+    move_uploaded_file($_FILES['file']['tmp_name'], $target);
+}
+----
+
+**Recommended Fix**:
+----
+<?php
+// SAFE: Use WordPress upload handler
+$uploaded = wp_handle_upload($_FILES['file'], [
+    'test_form' => false,
+    'mimes' => ['jpg' => 'image/jpeg', 'png' => 'image/png']
+]);
+
+// SAFE: Validate MIME type
+$finfo = finfo_open(FILEINFO_MIME_TYPE);
+$mime = finfo_file($finfo, $_FILES['file']['tmp_name']);
+finfo_close($finfo);
+
+$allowed_mimes = ['image/jpeg', 'image/png'];
+if (!in_array($mime, $allowed_mimes)) {
+    wp_die('Invalid file type');
+}
+----
+
+== Workflow Examples
+
+=== Pre-Commit Hook
+
+Integrate Sanctify-PHP into your Git workflow:
+
+[source,bash]
+----
+# .git/hooks/pre-commit
+#!/bin/bash
+# SPDX-License-Identifier: PMPL-1.0-or-later
+
+echo "Running Sanctify-PHP security checks..."
+
+# Get list of PHP files to commit
+FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.php$')
+
+if [ -z "$FILES" ]; then
+    exit 0
+fi
+
+# Run analysis
+sanctify analyze $FILES \
+  --severity=critical,high \
+  --format=text
+
+# Exit with error if critical issues found
+if [ $? -ne 0 ]; then
+    echo "❌ Critical security issues found. Commit aborted."
+    echo "Run 'sanctify fix --interactive' to resolve issues."
+    exit 1
+fi
+
+echo "✓ Security checks passed"
+exit 0
+----
+
+=== CI/CD Integration (GitHub Actions)
+
+[source,yaml]
+----
+# .github/workflows/security.yml
+name: Security Analysis
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  sanctify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Haskell
+        uses: haskell/actions/setup@v2
+        with:
+          ghc-version: '9.4'
+          cabal-version: '3.8'
+
+      - name: Install Sanctify-PHP
+        run: |
+          cabal update
+          cabal install sanctify-php
+
+      - name: Run Security Analysis
+        run: |
+          sanctify analyze src/ \
+            --format=sarif \
+            --severity=critical,high \
+            > results.sarif
+
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+
+      - name: Fail on Critical Issues
+        run: |
+          if grep -q '"level":"error"' results.sarif; then
+            echo "Critical security issues found!"
+            exit 1
+          fi
+----
+
+=== Development Watch Mode
+
+Monitor files during development:
+
+[source,bash]
+----
+# Terminal 1: Run PHP development server
+php -S localhost:8000
+
+# Terminal 2: Watch for security issues
+sanctify analyze src/ \
+  --watch \
+  --severity=high,critical \
+  --format=text
+
+# Now edit files - sanctify will re-analyze on save
+# and show issues in real-time
+----
+
+=== Bulk Plugin Audit
+
+Audit all WordPress plugins:
+
+[source,bash]
+----
+#!/bin/bash
+# audit-plugins.sh
+
+PLUGINS_DIR="wp-content/plugins"
+REPORT_DIR="security-reports"
+
+mkdir -p "$REPORT_DIR"
+
+for plugin in "$PLUGINS_DIR"/*; do
+    if [ -d "$plugin" ]; then
+        plugin_name=$(basename "$plugin")
+        echo "Auditing $plugin_name..."
+
+        sanctify analyze "$plugin" \
+          --format=html \
+          > "$REPORT_DIR/$plugin_name.html"
+
+        sanctify analyze "$plugin" \
+          --format=json \
+          --severity=critical,high \
+          > "$REPORT_DIR/$plugin_name.json"
+    fi
+done
+
+echo "Audit complete. Reports in $REPORT_DIR/"
+----
+
+== Performance Tuning
+
+=== Large Codebases
+
+For projects with 1000+ files:
+
+[source,yaml]
+----
+# .sanctify.yaml
+performance:
+  parallel-analysis: true
+  max-workers: 4  # CPU cores
+  incremental: true  # Only analyze changed files
+  cache-enabled: true
+  cache-dir: .sanctify-cache/
+
+exclude:
+  paths:
+    - vendor/
+    - node_modules/
+    - tests/
+----
+
+=== Incremental Analysis
+
+Only analyze changed files:
+
+[source,bash]
+----
+# Get list of changed files since last commit
+CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '\.php$')
+
+if [ ! -z "$CHANGED" ]; then
+    sanctify analyze $CHANGED --format=text
+fi
+----
+
+== Troubleshooting
+
+=== Common Issues
+
+**Issue: Parser fails on valid PHP 8.2 code**
+
+*Solution*: Ensure you're using the latest Sanctify-PHP version:
+----
+sanctify --version
+cabal update && cabal install sanctify-php
+----
+
+**Issue: False positives for safe code**
+
+*Solution*: Use suppression comments:
+----
+<?php
+// @sanctify-ignore sql-injection
+$query = $this->build_safe_query_from_whitelist($params);
+$wpdb->query($query);
+----
+
+**Issue: Out of memory on large files**
+
+*Solution*: Increase stack size:
+----
+stack exec -- sanctify analyze large-file.php +RTS -K100M -RTS
+----
+
+**Issue: Slow analysis on large project**
+
+*Solution*: Enable incremental analysis and exclude unnecessary directories:
+----
+# .sanctify.yaml
+performance:
+  incremental: true
+  parallel-analysis: true
+
+exclude:
+  paths:
+    - vendor/
+    - node_modules/
+    - *.min.php
+----
+
+== Advanced Configuration
+
+=== Custom Rules
+
+Define project-specific rules:
+
+[source,yaml]
+----
+# .sanctify.yaml
+custom-rules:
+  - id: custom-auth-check
+    type: security
+    severity: high
+    pattern: "function admin_.*\\(.*\\) {"
+    condition: "!contains(body, 'current_user_can')"
+    message: "Admin functions must check capabilities"
+
+  - id: custom-sql-prefix
+    type: best-practice
+    severity: medium
+    pattern: "wpdb->query.*FROM [^{]"
+    message: "Use {$wpdb->prefix} for table names"
+----
+
+=== Suppression Rules
+
+Suppress specific warnings:
+
+[source,yaml]
+----
+# .sanctify.yaml
+suppressions:
+  - rule: sql-injection
+    paths:
+      - lib/legacy-query-builder.php
+    reason: "Legacy code, scheduled for refactor"
+
+  - rule: xss
+    files:
+      - admin/debug-output.php
+    reason: "Debug output, admin-only access"
+----
+
+link:USER-GUIDE.adoc[← Back to Part 1] | Continue to link:../developer/ARCHITECTURE.adoc[Developer Guide]

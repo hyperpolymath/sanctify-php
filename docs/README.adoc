@@ -1,0 +1,224 @@
+= Sanctify-PHP Documentation
+:toc: left
+:toclevels: 2
+:icons: font
+
+== Overview
+
+Welcome to the Sanctify-PHP documentation. This comprehensive guide covers everything from basic usage to advanced development.
+
+**Sanctify-PHP** is a security analysis and hardening tool for PHP applications, with specialized support for WordPress. Built in Haskell, it provides:
+
+* Deep security analysis (OWASP Top 10 + advanced threats)
+* WordPress-native understanding
+* Automatic code transformations
+* Modern PHP 8.2+ parser
+* Multiple output formats
+
+== Documentation Structure
+
+=== For Users
+
+==== link:../QUICKSTART.adoc[Quick Start Guide]
+
+Get up and running in minutes:
+
+* Installation methods (Cabal, Stack, Nix, binaries)
+* Basic usage examples
+* Common workflows
+* Configuration basics
+
+==== link:user/USER-GUIDE.adoc[User Guide - Part 1]
+
+Comprehensive user documentation:
+
+* Installation and setup
+* Command reference (`analyze`, `fix`, `report`, `export`)
+* Configuration file format
+* Vulnerability reference (SQL injection, XSS, CSRF, etc.)
+
+==== link:user/USER-GUIDE-PART2.adoc[User Guide - Part 2]
+
+Advanced features:
+
+* Advanced vulnerability detection (ReDoS, SSRF, XXE, TOCTOU)
+* WordPress-specific features (nonces, capabilities, REST API)
+* Workflow examples (pre-commit hooks, CI/CD, watch mode)
+* Performance tuning
+* Troubleshooting
+
+=== For Developers
+
+==== link:developer/ARCHITECTURE.adoc[Architecture Guide]
+
+Understanding the codebase:
+
+* Module structure
+* Core AST design
+* Parser implementation (Megaparsec)
+* Emit module (code generation)
+* Security analysis pipeline
+* Transformation system
+* Type inference engine
+
+==== link:developer/EXTENDING.adoc[Extending Guide]
+
+Add your own features:
+
+* Adding custom security checks
+* Creating transformations
+* WordPress-specific checks
+* Custom output formats
+* Plugin architecture
+* Testing extensions
+* Contributing guidelines
+
+==== link:api/API-REFERENCE.adoc[API Reference]
+
+Complete API documentation:
+
+* `Sanctify.AST` - Core types
+* `Sanctify.Parser` - Parsing functions
+* `Sanctify.Emit` - Code generation
+* `Sanctify.Analysis.Security` - Vulnerability detection
+* `Sanctify.Analysis.Advanced` - Advanced checks
+* `Sanctify.WordPress.Security` - WordPress checks
+* `Sanctify.Transform` - Code transformations
+
+== Quick Navigation
+
+=== By Task
+
+**I want to...**
+
+* **...install Sanctify-PHP** → link:../QUICKSTART.adoc[Quick Start: Installation]
+* **...analyze my code** → link:user/USER-GUIDE.adoc[User Guide: Commands]
+* **...fix security issues** → link:user/USER-GUIDE.adoc[User Guide: fix command]
+* **...understand a vulnerability** → link:user/USER-GUIDE.adoc[User Guide: Vulnerability Reference]
+* **...configure for my project** → link:user/USER-GUIDE.adoc[User Guide: Configuration]
+* **...integrate with CI/CD** → link:user/USER-GUIDE-PART2.adoc[Part 2: CI/CD Integration]
+* **...add a custom check** → link:developer/EXTENDING.adoc[Extending: Custom Checks]
+* **...understand the architecture** → link:developer/ARCHITECTURE.adoc[Architecture Guide]
+* **...look up a function** → link:api/API-REFERENCE.adoc[API Reference]
+
+=== By Role
+
+**Security Auditor:**
+* link:../QUICKSTART.adoc[Quick Start] - Get running fast
+* link:user/USER-GUIDE.adoc[Vulnerability Reference] - Understand what's detected
+* link:user/USER-GUIDE-PART2.adoc[WordPress Features] - WP-specific checks
+
+**PHP Developer:**
+* link:../QUICKSTART.adoc[Quick Start] - Installation and basic usage
+* link:user/USER-GUIDE.adoc[Command Reference] - All CLI commands
+* link:user/USER-GUIDE-PART2.adoc[Workflow Examples] - Integration patterns
+
+**Haskell Developer:**
+* link:developer/ARCHITECTURE.adoc[Architecture] - Codebase structure
+* link:developer/EXTENDING.adoc[Extending] - Add features
+* link:api/API-REFERENCE.adoc[API Reference] - Function signatures
+
+**WordPress Developer:**
+* link:../QUICKSTART.adoc[Quick Start] - Get started
+* link:user/USER-GUIDE-PART2.adoc[WordPress Features] - WP-specific functionality
+* link:developer/EXTENDING.adoc[WordPress Checks] - Add custom WP checks
+
+== Feature Highlights
+
+=== Security Analysis
+
+* **OWASP Top 10**: SQL injection, XSS, CSRF, command injection, path traversal
+* **Advanced Threats**: ReDoS, SSRF, XXE, TOCTOU, timing attacks, object injection
+* **WordPress-Specific**: Nonce verification, capability checks, AJAX/REST API security
+* **Modern PHP**: Full PHP 8.2+ support (readonly classes, DNF types, enums, attributes)
+
+=== Code Transformations
+
+* **Strict Types**: Add `declare(strict_types=1)` automatically
+* **Type Hints**: Infer and add parameter/return type hints
+* **Sanitization**: Wrap input with `sanitize_*` functions
+* **Escaping**: Wrap output with `esc_*` functions
+* **SQL Safety**: Convert queries to use `$wpdb->prepare()`
+* **Crypto Modernization**: Replace weak functions (md5 → SHAKE3-256)
+
+=== Developer Experience
+
+* **Interactive Mode**: Review each fix before applying
+* **Watch Mode**: Re-analyze on file changes
+* **Multiple Formats**: Text, JSON, SARIF, HTML output
+* **Severity Filtering**: Focus on critical/high issues
+* **Type Filtering**: Analyze specific vulnerability types
+* **Diff Preview**: See exact changes before applying
+
+=== Infrastructure
+
+* **php.ini Export**: Hardened PHP configuration
+* **nginx Export**: Security headers and settings
+* **Guix Export**: Reproducible package definitions
+* **CI/CD Integration**: SARIF format for GitHub/GitLab
+
+== Examples
+
+=== Basic Analysis
+
+[source,bash]
+----
+# Analyze a file
+sanctify analyze index.php
+
+# Analyze with specific severity
+sanctify analyze src/ --severity=critical,high
+
+# Watch mode for development
+sanctify analyze src/ --watch
+----
+
+=== Interactive Fixing
+
+[source,bash]
+----
+# Review and apply fixes
+sanctify fix index.php --interactive
+
+# Preview changes without modifying
+sanctify fix index.php --diff
+----
+
+=== WordPress Plugin Audit
+
+[source,bash]
+----
+# Generate HTML audit report
+sanctify analyze wp-content/plugins/my-plugin/ \
+  --format=html > audit.html
+
+# Export hardened php.ini
+sanctify export-php-ini wp-content/plugins/my-plugin/ \
+  > php.ini.hardened
+----
+
+== License
+
+Sanctify-PHP is licensed under the PMPL-1.0-or-later license.
+
+See link:../LICENSE[LICENSE] for details.
+
+== Support
+
+* **Issues**: https://github.com/hyperpolymath/sanctify-php/issues
+* **Documentation**: https://sanctify-php.hyperpolymath.dev
+* **Community**: #sanctify-php on Matrix
+* **Email**: jonathan.jewell@gmail.com
+
+== Contributing
+
+We welcome contributions! See link:developer/EXTENDING.adoc[Extending Guide] for:
+
+* Adding custom security checks
+* Creating transformations
+* Writing tests
+* Submitting pull requests
+
+== Changelog
+
+See link:../CHANGELOG.md[CHANGELOG] for version history and release notes.

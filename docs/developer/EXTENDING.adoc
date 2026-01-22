@@ -1,0 +1,425 @@
+= Extending Sanctify-PHP
+:toc: left
+:toclevels: 4
+:icons: font
+:source-highlighter: rouge
+
+link:ARCHITECTURE.adoc[← Back to Architecture]
+
+== Adding Custom Security Checks
+
+=== Step 1: Define the Issue Type
+
+Add your check to `Sanctify.Analysis.Security`:
+
+[source,haskell]
+----
+-- In src/Sanctify/Analysis/Security.hs
+
+data IssueType
+    = SQLInjection
+    | CrossSiteScripting
+    -- ... existing types
+    | CustomAuthBypass  -- YOUR CUSTOM CHECK
+    deriving (Eq, Show, Generic, ToJSON, FromJSON)
+----
+
+=== Step 2: Implement the Check
+
+[source,haskell]
+----
+-- Check for custom authentication bypass pattern
+checkCustomAuthBypass :: Located Statement -> [SecurityIssue]
+checkCustomAuthBypass (Located pos stmt) = case stmt of
+    StmtIf condition thenBranch elseBranch ->
+        if isAuthCheckBypassable condition
+            then [customAuthBypassIssue pos]
+            else []
+    _ -> []
+  where
+    -- Detect: if ($_GET['admin'] == 'true') { grant_admin_access(); }
+    isAuthCheckBypassable (Located _ expr) = case expr of
+        ExprBinaryOp OpEq
+            (Located _ (ExprArrayAccess (Located _ (ExprVariable (Variable "$_GET"))) _))
+            (Located _ (ExprLiteral (LitString "true"))) -> True
+        _ -> False
+
+    customAuthBypassIssue pos = SecurityIssue
+        { issueType = CustomAuthBypass
+        , issueSeverity = Critical
+        , issueLocation = pos
+        , issueDescription = "Authentication bypass via URL parameter"
+        , issueSuggestion = "Use proper session-based authentication"
+        , issueCWE = Just "CWE-287"
+        , issueReferences = ["https://cwe.mitre.org/data/definitions/287.html"]
+        }
+----
+
+=== Step 3: Register the Check
+
+Add to the analysis pipeline:
+
+[source,haskell]
+----
+analyzeSecurityIssues :: PhpFile -> [SecurityIssue]
+analyzeSecurityIssues file = concatMap checkStmt (phpStatements file)
+  where
+    checkStmt stmt = concat
+        [ checkSQLInjection stmt
+        , checkXSS stmt
+        -- ... existing checks
+        , checkCustomAuthBypass stmt  -- ADD YOUR CHECK
+        ]
+----
+
+=== Example: Detecting Weak Hashing
+
+[source,haskell]
+----
+-- Detect use of MD5/SHA1 for password hashing
+checkWeakPasswordHashing :: Located Statement -> [SecurityIssue]
+checkWeakPasswordHashing (Located pos stmt) = case stmt of
+    StmtExpr (Located _ expr) -> checkExpr pos expr
+    _ -> []
+  where
+    checkExpr pos expr = case expr of
+        ExprCall (Located _ (ExprVariable (Variable func))) args
+            | func `elem` ["md5", "sha1"] && isPasswordArg args ->
+                [weakHashingIssue pos func]
+        _ -> []
+
+    isPasswordArg args = any (\(Argument _ (Located _ e)) ->
+        containsPasswordVariable e) args
+
+    containsPasswordVariable expr = case expr of
+        ExprVariable (Variable var) ->
+            var `elem` ["$password", "$pwd", "$pass"]
+        _ -> False
+
+    weakHashingIssue pos func = SecurityIssue
+        { issueType = WeakCrypto
+        , issueSeverity = High
+        , issueLocation = pos
+        , issueDescription = func ++ "() is not suitable for password hashing"
+        , issueSuggestion = "Use password_hash() with PASSWORD_ARGON2ID or bcrypt"
+        , issueCWE = Just "CWE-327"
+        , issueReferences =
+            [ "https://www.php.net/password_hash"
+            , "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html"
+            ]
+        }
+----
+
+== Adding Custom Transformations
+
+=== Step 1: Define the Transformation
+
+Create a new module `src/Sanctify/Transform/YourTransform.hs`:
+
+[source,haskell]
+----
+module Sanctify.Transform.YourTransform
+    ( transformYourFeature
+    ) where
+
+import Sanctify.AST
+import qualified Data.Text as T
+
+-- | Transform function signature
+transformYourFeature :: PhpFile -> PhpFile
+transformYourFeature file = file
+    { phpStatements = map transformStmt (phpStatements file) }
+  where
+    transformStmt (Located pos stmt) = Located pos $ case stmt of
+        StmtExpr expr -> StmtExpr (transformExpr expr)
+        -- Handle other statement types
+        _ -> stmt
+
+    transformExpr (Located pos expr) = Located pos $ case expr of
+        -- Your transformation logic here
+        _ -> expr
+----
+
+=== Example: Add Logging to Functions
+
+[source,haskell]
+----
+-- Add logging statement at the beginning of each function
+transformAddLogging :: PhpFile -> PhpFile
+transformAddLogging file = file
+    { phpStatements = map transformStmt (phpStatements file) }
+  where
+    transformStmt (Located pos stmt) = Located pos $ case stmt of
+        StmtFunction funcDef -> StmtFunction $ addLoggingToFunction funcDef
+        StmtClass classDef -> StmtClass $ addLoggingToClass classDef
+        _ -> stmt
+
+    addLoggingToFunction func = func
+        { funcBody = logStmt (funcName func) : funcBody func }
+
+    addLoggingToClass classDef = classDef
+        { classMembers = map addLoggingToMethod (classMembers classDef) }
+
+    addLoggingToMethod member = case member of
+        MemberMethod method -> MemberMethod $ method
+            { methodBody = logStmt (methodName method) : methodBody method }
+        _ -> member
+
+    logStmt name = Located defaultPos $ StmtExpr $ Located defaultPos $
+        ExprCall
+            (Located defaultPos $ ExprVariable (Variable "error_log"))
+            [Argument Nothing $ Located defaultPos $ ExprLiteral $
+                LitString $ "Entering function: " <> T.unpack name]
+
+    defaultPos = SourcePos "" (mkPos 1) (mkPos 1)
+----
+
+=== Example: Convert array() to []
+
+[source,haskell]
+----
+-- Modernize array syntax from array() to []
+transformModernizeArrays :: PhpFile -> PhpFile
+transformModernizeArrays file = file
+    { phpStatements = map transformStmt (phpStatements file) }
+  where
+    transformStmt (Located pos stmt) = Located pos $ case stmt of
+        StmtExpr expr -> StmtExpr (transformExpr expr)
+        StmtReturn (Just expr) -> StmtReturn (Just $ transformExpr expr)
+        StmtIf cond thenBranch elseBranch ->
+            StmtIf
+                (transformExpr cond)
+                (map transformStmt thenBranch)
+                (fmap (map transformStmt) elseBranch)
+        -- Handle other statement types...
+        _ -> stmt
+
+    transformExpr (Located pos expr) = Located pos $ case expr of
+        ExprCall (Located _ (ExprVariable (Variable "array"))) args ->
+            ExprArray (argsToElements args)
+        ExprBinaryOp op e1 e2 ->
+            ExprBinaryOp op (transformExpr e1) (transformExpr e2)
+        -- Handle other expression types...
+        _ -> expr
+
+    argsToElements args = map argToElement args
+      where
+        argToElement (Argument Nothing val) = ArrayElementValue val
+        argToElement (Argument (Just key) val) = ArrayElementKeyValue key val
+----
+
+== Adding WordPress-Specific Checks
+
+Create checks in `src/Sanctify/WordPress/Security.hs`:
+
+[source,haskell]
+----
+-- Check for missing sanitization in options
+checkUnsafeOptionsUpdate :: Located Statement -> [WordPressIssue]
+checkUnsafeOptionsUpdate (Located pos stmt) = case stmt of
+    StmtExpr (Located _ (ExprCall func args)) ->
+        if isUpdateOption func && hasUnsanitizedArg args
+            then [unsafeOptionIssue pos]
+            else []
+    _ -> []
+  where
+    isUpdateOption (Located _ (ExprVariable (Variable "update_option"))) = True
+    isUpdateOption _ = False
+
+    hasUnsanitizedArg args = case args of
+        [_, Argument _ (Located _ expr)] -> isTaintedExpr expr
+        _ -> False
+
+    isTaintedExpr expr = case expr of
+        ExprArrayAccess (Located _ (ExprVariable (Variable "$_POST"))) _ -> True
+        ExprArrayAccess (Located _ (ExprVariable (Variable "$_GET"))) _ -> True
+        _ -> False
+
+    unsafeOptionIssue pos = WordPressIssue
+        { wpIssueType = UnsafeSanitization
+        , wpIssueSeverity = Medium
+        , wpIssueLocation = pos
+        , wpIssueDescription = "update_option() with unsanitized user input"
+        , wpIssueSuggestion = "Use sanitize_text_field() or similar"
+        , wpIssueCodeExample = Just $
+            "update_option('my_option', sanitize_text_field($_POST['value']));"
+        }
+----
+
+== Custom Output Formats
+
+Add new formats in `src/Sanctify/Report.hs`:
+
+[source,haskell]
+----
+-- Custom XML format
+outputXMLResults :: [(FilePath, [SecurityIssue], [WordPressIssue])] -> IO ()
+outputXMLResults results = do
+    putStrLn "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+    putStrLn "<sanctify-report>"
+    forM_ results $ \(file, secIssues, wpIssues) -> do
+        putStrLn $ "  <file path=\"" ++ file ++ "\">"
+        forM_ secIssues $ \issue -> do
+            putStrLn "    <issue>"
+            putStrLn $ "      <type>" ++ show (issueType issue) ++ "</type>"
+            putStrLn $ "      <severity>" ++ show (issueSeverity issue) ++ "</severity>"
+            putStrLn $ "      <line>" ++ show (sourceLine $ issueLocation issue) ++ "</line>"
+            putStrLn $ "      <description>" ++ T.unpack (issueDescription issue) ++ "</description>"
+            putStrLn "    </issue>"
+        putStrLn "  </file>"
+    putStrLn "</sanctify-report>"
+----
+
+== Plugin Architecture
+
+=== Defining a Plugin Interface
+
+[source,haskell]
+----
+-- In src/Sanctify/Plugin.hs
+
+data Plugin = Plugin
+    { pluginName :: Text
+    , pluginVersion :: Text
+    , pluginChecks :: [Check]
+    , pluginTransforms :: [Transform]
+    }
+
+data Check = Check
+    { checkName :: Text
+    , checkSeverity :: Severity
+    , checkFunction :: Located Statement -> [SecurityIssue]
+    }
+
+-- Load plugins from directory
+loadPlugins :: FilePath -> IO [Plugin]
+loadPlugins pluginDir = do
+    files <- listDirectory pluginDir
+    let pluginFiles = filter (\f -> takeExtension f == ".so") files
+    mapM loadPlugin pluginFiles
+
+loadPlugin :: FilePath -> IO Plugin
+loadPlugin path = do
+    -- Dynamic loading implementation
+    undefined
+----
+
+=== Example Plugin
+
+[source,haskell]
+----
+-- plugins/CustomPlugin.hs
+module CustomPlugin where
+
+import Sanctify.Plugin
+import Sanctify.AST
+import Sanctify.Analysis.Security
+
+customPlugin :: Plugin
+customPlugin = Plugin
+    { pluginName = "Custom Security Checks"
+    , pluginVersion = "1.0.0"
+    , pluginChecks =
+        [ Check
+            { checkName = "Custom Auth Check"
+            , checkSeverity = Critical
+            , checkFunction = checkCustomAuth
+            }
+        ]
+    , pluginTransforms = []
+    }
+
+checkCustomAuth :: Located Statement -> [SecurityIssue]
+checkCustomAuth = -- ... implementation
+----
+
+== Testing Your Extensions
+
+=== Unit Tests
+
+Add tests in `test/CustomSpec.hs`:
+
+[source,haskell]
+----
+module CustomSpec (spec) where
+
+import Test.Hspec
+import Sanctify.Parser
+import Sanctify.Analysis.Security
+
+spec :: Spec
+spec = do
+    describe "Custom Auth Bypass Check" $ do
+        it "detects auth bypass via URL parameter" $ do
+            let code = "<?php\nif ($_GET['admin'] == 'true') { grant_admin(); }"
+            case parsePhpString "test.php" code of
+                Left err -> expectationFailure $ show err
+                Right ast -> do
+                    let issues = analyzeSecurityIssues ast
+                    any (\i -> issueType i == CustomAuthBypass) issues `shouldBe` True
+
+        it "does not flag proper auth checks" $ do
+            let code = "<?php\nif (current_user_can('manage_options')) { grant_admin(); }"
+            case parsePhpString "test.php" code of
+                Left err -> expectationFailure $ show err
+                Right ast -> do
+                    let issues = analyzeSecurityIssues ast
+                    filter (\i -> issueType i == CustomAuthBypass) issues `shouldBe` []
+----
+
+=== Integration Tests
+
+Test transforms in `test/TransformSpec.hs`:
+
+[source,haskell]
+----
+describe "Custom Logging Transform" $ do
+    it "adds logging to functions" $ do
+        let code = "<?php\nfunction test() { return 42; }"
+        case parsePhpString "test.php" code of
+            Left err -> expectationFailure $ show err
+            Right ast -> do
+                let transformed = transformAddLogging ast
+                let emitted = emitPhp transformed
+                emitted `shouldSatisfy` T.isInfixOf "error_log"
+                emitted `shouldSatisfy` T.isInfixOf "Entering function: test"
+----
+
+== Contributing Your Extension
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/custom-check`
+3. **Add your code** in appropriate module
+4. **Write tests** in `test/` directory
+5. **Update documentation** in `docs/`
+6. **Run tests**: `cabal test`
+7. **Submit pull request**
+
+=== Pull Request Checklist
+
+- [ ] Code follows existing style (use `stylish-haskell`)
+- [ ] All tests pass: `cabal test`
+- [ ] New functionality has tests
+- [ ] Documentation updated
+- [ ] SPDX license header present
+- [ ] Commit messages follow conventions
+
+=== Code Style
+
+Use `stylish-haskell` for formatting:
+
+[source,bash]
+----
+# Format all Haskell files
+find src test app -name '*.hs' -exec stylish-haskell -i {} \;
+----
+
+Follow these conventions:
+
+* **Imports**: Qualified imports for commonly used modules
+* **Line length**: 80-100 characters
+* **Indentation**: 4 spaces (no tabs)
+* **Comments**: Haddock format for public APIs
+* **Naming**: camelCase for functions, PascalCase for types
+
+link:ARCHITECTURE.adoc[← Back to Architecture] | Continue to link:../api/API-REFERENCE.adoc[API Reference →]

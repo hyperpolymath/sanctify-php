@@ -1,0 +1,469 @@
+= Sanctify-PHP Architecture Guide
+:toc: left
+:toclevels: 4
+:icons: font
+:source-highlighter: rouge
+
+== Overview
+
+Sanctify-PHP is built in Haskell using a pipeline architecture:
+
+[source]
+----
+PHP Source → Parser → AST → Analysis → Report
+                ↓           ↓
+              Emit    Transformations
+----
+
+**Key Design Principles:**
+
+1. **Immutable AST**: Once parsed, AST is never mutated
+2. **Pure Functions**: Analysis is side-effect free
+3. **Composable Passes**: Each transformation is independent
+4. **Type Safety**: Leverage Haskell's type system for correctness
+
+== Module Structure
+
+----
+src/
+├── Sanctify/
+│   ├── AST.hs              # Core PHP AST definition
+│   ├── Parser.hs           # Megaparsec-based parser
+│   ├── Emit.hs             # AST → PHP code generation
+│   ├── Analysis/
+│   │   ├── Security.hs     # OWASP Top 10 checks
+│   │   ├── Advanced.hs     # ReDoS, SSRF, XXE, etc.
+│   │   ├── Types.hs        # Type inference engine
+│   │   ├── Taint.hs        # Taint tracking
+│   │   └── DeadCode.hs     # Unused code detection
+│   ├── Transform/
+│   │   ├── StrictTypes.hs  # Add declare(strict_types=1)
+│   │   ├── TypeHints.hs    # Infer and add type hints
+│   │   ├── Sanitize.hs     # Wrap input/output
+│   │   └── Strict.hs       # Various strict mode fixes
+│   ├── WordPress/
+│   │   ├── Constraints.hs  # WP-specific patterns
+│   │   ├── Hooks.hs        # Hook analysis
+│   │   └── Security.hs     # WP security checks
+│   ├── Config.hs           # Configuration loading
+│   ├── Report.hs           # Report generation
+│   └── Ruleset.hs          # Rule definitions
+├── app/
+│   └── Main.hs             # CLI entry point
+└── test/
+    ├── ParserSpec.hs       # Parser tests
+    ├── SecuritySpec.hs     # Security tests
+    ├── TransformSpec.hs    # Transform tests
+    └── fixtures/           # Test PHP files
+----
+
+== Core AST (Sanctify.AST)
+
+=== Design
+
+The AST is a complete representation of PHP 8.2+ code:
+
+[source,haskell]
+----
+-- | Complete PHP file
+data PhpFile = PhpFile
+    { phpDeclareStrict :: Bool
+    , phpNamespace :: Maybe QualifiedName
+    , phpUses :: [Use]
+    , phpStatements :: [Located Statement]
+    }
+
+-- | Source location tracking
+data Located a = Located SourcePos a
+
+-- | Statements
+data Statement
+    = StmtExpr (Located Expr)
+    | StmtReturn (Maybe (Located Expr))
+    | StmtIf (Located Expr) [Located Statement] (Maybe [Located Statement])
+    | StmtWhile (Located Expr) [Located Statement]
+    | StmtFor [Located Expr] [Located Expr] [Located Expr] [Located Statement]
+    | StmtForeach (Located Expr) Variable (Maybe Variable) [Located Statement]
+    | StmtSwitch (Located Expr) [SwitchCase]
+    | StmtMatch (Located Expr) [MatchArm]
+    | StmtTry [Located Statement] [CatchClause] (Maybe [Located Statement])
+    | StmtThrow (Located Expr)
+    | StmtDeclare [Directive] [Located Statement]
+    | StmtGlobal [Variable]
+    | StmtStatic [StaticVar]
+    | StmtUnset [Located Expr]
+    | StmtBreak (Maybe Int)
+    | StmtContinue (Maybe Int)
+    | StmtEcho [Located Expr]
+    | StmtFunction FunctionDef
+    | StmtClass ClassDef
+    | StmtInterface InterfaceDef
+    | StmtTrait TraitDef
+    | StmtEnum EnumDef
+    | StmtNamespace QualifiedName [Located Statement]
+    | StmtUse Use
+----
+
+=== Expression Types
+
+[source,haskell]
+----
+data Expr
+    = ExprLiteral Literal
+    | ExprVariable Variable
+    | ExprBinaryOp BinOp (Located Expr) (Located Expr)
+    | ExprUnaryOp UnOp (Located Expr)
+    | ExprTernary (Located Expr) (Located Expr) (Located Expr)
+    | ExprElvis (Located Expr) (Located Expr)
+    | ExprNullCoalesce (Located Expr) (Located Expr)
+    | ExprCall (Located Expr) [Argument]
+    | ExprMethodCall (Located Expr) Name [Argument]
+    | ExprNullsafeMethodCall (Located Expr) Name [Argument]
+    | ExprPropertyAccess (Located Expr) Name
+    | ExprNullsafePropertyAccess (Located Expr) Name
+    | ExprArrayAccess (Located Expr) (Maybe (Located Expr))
+    | ExprArray [ArrayElement]
+    | ExprList [Variable]
+    | ExprClosure ClosureDef
+    | ExprArrowFunction ArrowFunctionDef
+    | ExprYield (Maybe (Located Expr)) (Maybe (Located Expr))
+    | ExprYieldFrom (Located Expr)
+    | ExprThrow (Located Expr)
+    | ExprMatch MatchExpr
+    | ExprInstanceof (Located Expr) PhpType
+    | ExprClone (Located Expr)
+    | ExprNew PhpType [Argument]
+    | ExprClassConstAccess (Located Expr) Name
+----
+
+=== Modern PHP 8.2+ Features
+
+**Readonly Classes:**
+[source,haskell]
+----
+data ClassDef = ClassDef
+    { className :: Name
+    , classModifiers :: [Modifier]
+    , classReadonly :: Bool  -- PHP 8.2
+    , classExtends :: Maybe QualifiedName
+    , classImplements :: [QualifiedName]
+    , classMembers :: [ClassMember]
+    , classAttributes :: [Attribute]
+    }
+----
+
+**DNF Types (Disjunctive Normal Form):**
+[source,haskell]
+----
+data PhpType
+    = TSimple QualifiedName
+    | TUnion [PhpType]           -- A|B|C
+    | TIntersection [PhpType]    -- A&B&C
+    | TNullable PhpType
+    | TArray
+    | TMixed
+----
+
+Example DNF: `(A&B)|(C&D)` is represented as:
+[source,haskell]
+----
+TUnion [TIntersection [TSimple "A", TSimple "B"],
+        TIntersection [TSimple "C", TSimple "D"]]
+----
+
+**Enums:**
+[source,haskell]
+----
+data EnumDef = EnumDef
+    { enumName :: Name
+    , enumBackedType :: Maybe PhpType  -- : string or : int
+    , enumCases :: [EnumCase]
+    , enumMethods :: [ClassMember]
+    , enumAttributes :: [Attribute]
+    }
+
+data EnumCase = EnumCase
+    { caseName :: Name
+    , caseValue :: Maybe Literal  -- For backed enums
+    , caseAttributes :: [Attribute]
+    }
+----
+
+**Attributes (PHP 8.0+):**
+[source,haskell]
+----
+data Attribute = Attribute
+    { attrName :: QualifiedName
+    , attrArgs :: [Argument]
+    }
+----
+
+== Parser (Sanctify.Parser)
+
+=== Megaparsec-Based
+
+Uses Megaparsec for parser combinators:
+
+[source,haskell]
+----
+type Parser = Parsec Void Text
+
+-- Entry point
+parsePhpString :: FilePath -> Text -> Either ParseErrorBundle PhpFile
+parsePhpString filename input =
+    runParser phpFileP filename input
+
+-- Top-level parser
+phpFileP :: Parser PhpFile
+phpFileP = do
+    skipWhitespace
+    openTag
+    declareStrict <- option False declareStrictP
+    namespace <- optional namespaceP
+    uses <- many useP
+    stmts <- many statementP
+    eof
+    pure PhpFile
+        { phpDeclareStrict = declareStrict
+        , phpNamespace = namespace
+        , phpUses = uses
+        , phpStatements = stmts
+        }
+----
+
+=== Expression Parsing
+
+Uses operator precedence climbing:
+
+[source,haskell]
+----
+exprP :: Parser Expr
+exprP = makeExprParser termP operatorTable
+
+operatorTable :: [[Operator Parser Expr]]
+operatorTable =
+    [ [ infixL "*" (ExprBinaryOp OpMul)
+      , infixL "/" (ExprBinaryOp OpDiv)
+      ]
+    , [ infixL "+" (ExprBinaryOp OpAdd)
+      , infixL "-" (ExprBinaryOp OpSub)
+      ]
+    , [ infixL "." (ExprBinaryOp OpConcat) ]
+    , [ infixN "==" (ExprBinaryOp OpEq)
+      , infixN "===" (ExprBinaryOp OpIdentical)
+      ]
+    , [ infixR "&&" (ExprBinaryOp OpAnd)
+      , infixR "||" (ExprBinaryOp OpOr)
+      ]
+    , [ infixR "??=" (\l r -> ExprAssignOp OpCoalesce l r)
+      , infixR "=" ExprAssign
+      ]
+    ]
+----
+
+=== Postfix Operators
+
+Method calls, property access, array access:
+
+[source,haskell]
+----
+postfixP :: Expr -> Parser Expr
+postfixP base = do
+    ops <- many postfixOpP
+    pure $ foldl applyPostfix base ops
+  where
+    postfixOpP = choice
+        [ MethodCall <$ symbol "->" <*> nameP <*> parens (commaSep argumentP)
+        , NullsafeMethodCall <$ symbol "?->" <*> nameP <*> parens (commaSep argumentP)
+        , PropertyAccess <$ symbol "->" <*> nameP
+        , NullsafePropertyAccess <$ symbol "?->" <*> nameP
+        , ArrayAccess <$ brackets (optional exprP)
+        ]
+----
+
+== Emit (Sanctify.Emit)
+
+Code generation from AST using `Builder` for efficiency:
+
+[source,haskell]
+----
+emitPhp :: PhpFile -> Text
+emitPhp file = toText $ buildPhpFile file
+
+buildPhpFile :: PhpFile -> Builder
+buildPhpFile PhpFile{..} = mconcat
+    [ fromText "<?php\n"
+    , if phpDeclareStrict
+        then fromText "declare(strict_types=1);\n\n"
+        else mempty
+    , maybe mempty buildNamespace phpNamespace
+    , mconcat $ map buildUse phpUses
+    , mconcat $ map buildStatement phpStatements
+    ]
+
+buildStatement :: Located Statement -> Builder
+buildStatement (Located _ stmt) = case stmt of
+    StmtMatch expr arms -> mconcat
+        [ fromText "match ("
+        , buildExpr expr
+        , fromText ") {\n"
+        , indent $ mconcat $ intersperse (fromText ",\n") $ map buildMatchArm arms
+        , fromText "\n};\n"
+        ]
+    -- ... other statements
+----
+
+== Security Analysis (Sanctify.Analysis.Security)
+
+=== Analysis Pipeline
+
+[source,haskell]
+----
+analyzeSecurityIssues :: PhpFile -> [SecurityIssue]
+analyzeSecurityIssues file = concatMap checkStmt (phpStatements file)
+  where
+    checkStmt stmt = concat
+        [ checkSQLInjection stmt
+        , checkXSS stmt
+        , checkCSRF stmt
+        , checkCommandInjection stmt
+        , checkPathTraversal stmt
+        , checkUnsafeDeserialization stmt
+        , checkWeakCrypto stmt
+        , checkHardcodedSecrets stmt
+        ]
+----
+
+=== Security Issue Type
+
+[source,haskell]
+----
+data SecurityIssue = SecurityIssue
+    { issueType :: IssueType
+    , issueSeverity :: Severity
+    , issueLocation :: SourcePos
+    , issueDescription :: Text
+    , issueSuggestion :: Text
+    , issueCWE :: Maybe Text
+    , issueReferences :: [Text]
+    }
+
+data IssueType
+    = SQLInjection
+    | CrossSiteScripting
+    | CSRF
+    | CommandInjection
+    | PathTraversal
+    | UnsafeDeserialization
+    | WeakCrypto
+    | HardcodedSecret
+    | DangerousFunction
+
+data Severity = Critical | High | Medium | Low | Info
+----
+
+=== Pattern Matching
+
+[source,haskell]
+----
+-- Check for SQL injection
+checkSQLInjection :: Located Statement -> [SecurityIssue]
+checkSQLInjection (Located pos stmt) = case stmt of
+    StmtExpr (Located _ (ExprMethodCall receiver method args)) ->
+        if isWpdbQuery receiver method && hasTaintedArg args
+            then [sqlInjectionIssue pos]
+            else []
+    _ -> []
+  where
+    isWpdbQuery (Located _ (ExprVariable (Variable "$wpdb"))) method =
+        method `elem` ["query", "get_results", "get_var", "get_row"]
+    isWpdbQuery _ _ = False
+
+    hasTaintedArg = any isTaintedExpr
+
+    isTaintedExpr (Argument _ (Located _ expr)) = case expr of
+        ExprBinaryOp OpConcat _ (Located _ (ExprArrayAccess (Located _ (ExprVariable (Variable "$_GET"))) _)) -> True
+        ExprArrayAccess (Located _ (ExprVariable (Variable "$_POST"))) _ -> True
+        _ -> False
+----
+
+## Transformation (Sanctify.Transform)
+
+=== Transformation Pipeline
+
+[source,haskell]
+----
+applyTransforms :: [Transform] -> PhpFile -> PhpFile
+applyTransforms transforms file = foldl (\f t -> t f) file transforms
+
+type Transform = PhpFile -> PhpFile
+
+-- Available transforms
+allTransforms :: [Transform]
+allTransforms =
+    [ transformStrict
+    , transformSanitizeOutput
+    , transformSanitizeInput
+    , transformSQLPrepare
+    , transformRedirectSafety
+    , transformAddTypeHints
+    , transformModernizeCrypto
+    ]
+----
+
+=== Example Transform: Add Strict Types
+
+[source,haskell]
+----
+transformStrict :: PhpFile -> PhpFile
+transformStrict file = file { phpDeclareStrict = True }
+----
+
+=== Example Transform: Escape Output
+
+[source,haskell]
+----
+transformSanitizeOutput :: PhpFile -> PhpFile
+transformSanitizeOutput file = file
+    { phpStatements = map transformStmt (phpStatements file) }
+  where
+    transformStmt (Located pos stmt) = Located pos $ case stmt of
+        StmtEcho exprs -> StmtEcho (map wrapWithEscape exprs)
+        _ -> stmt
+
+    wrapWithEscape expr@(Located pos e) = case e of
+        ExprArrayAccess (Located _ (ExprVariable (Variable "$_GET"))) _ ->
+            Located pos $ ExprCall
+                (Located pos $ ExprVariable (Variable "esc_html"))
+                [Argument Nothing expr]
+        _ -> expr
+----
+
+== Type System (Sanctify.Analysis.Types)
+
+=== Type Inference
+
+[source,haskell]
+----
+data TypeEnv = TypeEnv
+    { envVariables :: Map Variable PhpType
+    , envFunctions :: Map Name FunctionType
+    }
+
+data FunctionType = FunctionType
+    { ftParams :: [(Variable, PhpType)]
+    , ftReturn :: PhpType
+    }
+
+-- Infer expression type
+inferExprType :: TypeEnv -> Located Expr -> PhpType
+inferExprType env (Located _ expr) = case expr of
+    ExprLiteral (LitInt _) -> TSimple (QName ["int"])
+    ExprLiteral (LitString _) -> TSimple (QName ["string"])
+    ExprBinaryOp OpAdd e1 e2 -> inferNumericOp env e1 e2
+    ExprVariable var -> fromMaybe TMixed (Map.lookup var (envVariables env))
+    ExprCall func args -> inferFunctionReturn env func
+    _ -> TMixed
+----
+
+link:../user/USER-GUIDE.adoc[← Back to User Guide] | Continue to link:EXTENDING.adoc[Extending Guide →]

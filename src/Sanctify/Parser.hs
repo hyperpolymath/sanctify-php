@@ -23,7 +23,7 @@ import Data.Void (Void)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Control.Monad.Combinators.Expr
 
 import Sanctify.AST
@@ -182,8 +182,18 @@ statementP = do
         , StmtWhile <$> whileP
         , StmtFor <$> forP
         , StmtForeach <$> foreachP
+        , StmtSwitch <$> switchP
+        , StmtMatch <$> matchP
+        , StmtTry <$> tryP
         , StmtReturn <$> returnP
+        , StmtThrow <$> throwP
+        , StmtBreak <$> breakP
+        , StmtContinue <$> continueP
         , StmtEcho <$> echoP
+        , StmtGlobal <$> globalP
+        , StmtStatic <$> staticP
+        , StmtUnset <$> unsetP
+        , StmtDeclare <$> declareP
         , StmtDecl <$> declarationP
         , exprStmtP
         ]
@@ -225,6 +235,66 @@ statementP = do
         body <- braces (many statementP)
         pure (e, v, k, body)
 
+    switchP = do
+        reserved "switch"
+        expr <- parens exprP
+        cases <- braces (many switchCaseP)
+        pure (expr, cases)
+      where
+        switchCaseP = do
+            caseExpr <- optional (reserved "case" *> exprP <* symbol ":")
+            when (isNothing caseExpr) (void $ reserved "default" *> symbol ":")
+            body <- many statementP
+            pure SwitchCase { caseExpr = caseExpr, caseBody = body }
+
+    -- PHP 8.0 match expression as statement
+    matchP = do
+        reserved "match"
+        expr <- parens exprP
+        arms <- braces (commaSep matchArmP)
+        semi
+        pure (expr, arms)
+      where
+        matchArmP = do
+            conds <- (reserved "default" *> pure []) <|> (exprP `sepBy1` symbol ",")
+            _ <- symbol "=>"
+            result <- exprP
+            pure MatchArm { matchConditions = conds, matchResult = result }
+
+    tryP = do
+        reserved "try"
+        body <- braces (many statementP)
+        catches <- many catchP
+        finally <- optional (reserved "finally" *> braces (many statementP))
+        pure (body, catches, finally)
+      where
+        catchP = do
+            reserved "catch"
+            (types, var) <- parens $ do
+                types <- qualifiedNameP `sepBy1` symbol "|"
+                var <- optional variableP
+                pure (types, var)
+            body <- braces (many statementP)
+            pure CatchClause { catchTypes = types, catchVar = var, catchBody = body }
+
+    throwP = do
+        reserved "throw"
+        e <- exprP
+        semi
+        pure e
+
+    breakP = do
+        reserved "break"
+        n <- optional (L.decimal :: Parser Int)
+        semi
+        pure n
+
+    continueP = do
+        reserved "continue"
+        n <- optional (L.decimal :: Parser Int)
+        semi
+        pure n
+
     returnP = do
         reserved "return"
         e <- optional exprP
@@ -236,6 +306,44 @@ statementP = do
         es <- commaSep exprP
         semi
         pure es
+
+    globalP = do
+        reserved "global"
+        vars <- commaSep variableP
+        semi
+        pure vars
+
+    staticP = do
+        reserved "static"
+        vars <- commaSep staticVarP
+        semi
+        pure vars
+      where
+        staticVarP = do
+            var <- variableP
+            def <- optional (symbol "=" *> exprP)
+            pure (var, def)
+
+    unsetP = do
+        reserved "unset"
+        exprs <- parens (commaSep exprP)
+        semi
+        pure exprs
+
+    declareP = do
+        reserved "declare"
+        directives <- parens (commaSep directiveP)
+        body <- choice
+            [ braces (many statementP)
+            , pure [] <$ semi  -- Empty body with just semicolon
+            ]
+        pure (directives, body)
+      where
+        directiveP = do
+            name <- nameP
+            _ <- symbol "="
+            value <- literalP
+            pure (name, value)
 
     exprStmtP = do
         e <- exprP
@@ -251,11 +359,24 @@ declarationP :: Parser Declaration
 declarationP = choice
     [ functionP
     , classP
+    , traitP
+    , interfaceP
+    , enumP
     ]
+
+-- | Parse attribute (PHP 8.0+)
+attributeP :: Parser Attribute
+attributeP = do
+    _ <- symbol "#["
+    name <- qualifiedNameP
+    args <- option [] (parens (commaSep argumentP))
+    _ <- symbol "]"
+    pure Attribute { attrName = name, attrArgs = args }
 
 -- | Parse function
 functionP :: Parser Declaration
 functionP = do
+    attrs <- many attributeP
     reserved "function"
     name <- nameP
     params <- parens (commaSep parameterP)
@@ -266,26 +387,91 @@ functionP = do
         , fnParams = params
         , fnReturnType = ret
         , fnBody = body
-        , fnAttributes = []
+        , fnAttributes = attrs
         }
 
--- | Parse class
+-- | Parse class (with PHP 8.2 readonly class support)
 classP :: Parser Declaration
 classP = do
+    attrs <- many attributeP
+    -- PHP 8.2: readonly modifier can appear before 'class'
+    readonlyClass <- option False (True <$ reserved "readonly")
     mods <- many modifierP
     reserved "class"
     name <- nameP
     ext <- optional (reserved "extends" *> qualifiedNameP)
     impls <- option [] (reserved "implements" *> qualifiedNameP `sepBy1` symbol ",")
     members <- braces (many classMemberP)
+    let allMods = if readonlyClass then Readonly : mods else mods
     pure DeclClass
         { clsName = name
-        , clsModifiers = mods
+        , clsModifiers = allMods
         , clsExtends = ext
         , clsImplements = impls
         , clsMembers = members
-        , clsAttributes = []
+        , clsAttributes = attrs
         }
+
+-- | Parse trait (PHP 8.2: supports constants)
+traitP :: Parser Declaration
+traitP = do
+    reserved "trait"
+    name <- nameP
+    members <- braces (many classMemberP)  -- Reuse classMemberP which handles constants
+    pure DeclTrait
+        { traitName = name
+        , traitMembers = members
+        }
+
+-- | Parse interface
+interfaceP :: Parser Declaration
+interfaceP = do
+    reserved "interface"
+    name <- nameP
+    ext <- option [] (reserved "extends" *> qualifiedNameP `sepBy1` symbol ",")
+    methods <- braces (many interfaceMethodP)
+    pure DeclInterface
+        { ifaceName = name
+        , ifaceExtends = ext
+        , ifaceMethods = methods
+        }
+  where
+    interfaceMethodP = do
+        vis <- option Public visibilityP
+        reserved "function"
+        name <- nameP
+        params <- parens (commaSep parameterP)
+        ret <- optional returnTypeP
+        semi
+        pure InterfaceMethod
+            { imethName = name
+            , imethParams = params
+            , imethReturn = ret
+            }
+
+-- | Parse enum (PHP 8.1+)
+enumP :: Parser Declaration
+enumP = do
+    reserved "enum"
+    name <- nameP
+    backedType <- optional (symbol ":" *> phpTypeP)
+    body <- braces $ do
+        cases <- many enumCaseP
+        methods <- many classMemberP
+        pure (cases, methods)
+    pure DeclEnum
+        { enumName = name
+        , enumBackedType = backedType
+        , enumCases = fst body
+        , enumMethods = snd body
+        }
+  where
+    enumCaseP = do
+        reserved "case"
+        name <- nameP
+        value <- optional (symbol "=" *> literalP)
+        semi
+        pure EnumCase { ecaseName = name, ecaseValue = value }
 
 -- | Parse modifier
 modifierP :: Parser Modifier
@@ -314,6 +500,7 @@ classMemberP = choice
 -- | Parse method
 methodP :: Parser ClassMember
 methodP = do
+    attrs <- many attributeP
     vis <- option Public visibilityP
     mods <- many modifierP
     reserved "function"
@@ -328,7 +515,7 @@ methodP = do
         , methParams = params
         , methReturn = ret
         , methBody = body
-        , methAttributes = []
+        , methAttributes = attrs
         }
 
 -- | Parse property
@@ -348,9 +535,13 @@ propertyP = do
         , propDefault = def
         }
 
--- | Parse parameter
+-- | Parse parameter (with PHP 8.0 attributes and PHP 8.0 constructor promotion)
 parameterP :: Parser Parameter
 parameterP = do
+    attrs <- many attributeP
+    -- Constructor promotion: public/protected/private readonly? Type $var
+    vis <- optional visibilityP
+    readonly <- option False (True <$ reserved "readonly")
     mType <- optional typeHintP
     byRef <- option False (True <$ symbol "&")
     variadic <- option False (True <$ symbol "...")
@@ -362,9 +553,9 @@ parameterP = do
         , paramVariadic = variadic
         , paramName = name
         , paramDefault = def
-        , paramVisibility = Nothing
-        , paramReadonly = False
-        , paramAttributes = []
+        , paramVisibility = vis
+        , paramReadonly = readonly
+        , paramAttributes = attrs
         }
 
 -- | Parse type hint
@@ -382,26 +573,51 @@ returnTypeP = do
     t <- phpTypeP
     pure ReturnType { rtType = t, rtNullable = nullable }
 
--- | Parse PHP type
+-- | Parse PHP type (with PHP 8.2 DNF types)
 phpTypeP :: Parser PhpType
-phpTypeP = choice
-    [ TInt <$ reserved "int"
-    , TFloat <$ reserved "float"
-    , TString <$ reserved "string"
-    , TBool <$ reserved "bool"
-    , TArray Nothing <$ reserved "array"
-    , TObject Nothing <$ reserved "object"
-    , TCallable <$ reserved "callable"
-    , TIterable <$ reserved "iterable"
-    , TMixed <$ reserved "mixed"
-    , TVoid <$ reserved "void"
-    , TNever <$ reserved "never"
-    , TNull <$ reserved "null"
-    , TSelf <$ reserved "self"
-    , TStatic <$ reserved "static"
-    , TParent <$ reserved "parent"
-    , TClass <$> qualifiedNameP
-    ]
+phpTypeP = unionTypeP
+  where
+    -- Union type: A|B|C or (A&B)|(C&D) [DNF]
+    unionTypeP = do
+        first <- intersectionTypeP
+        rest <- many (symbol "|" *> intersectionTypeP)
+        pure $ case rest of
+            [] -> first
+            _  -> TUnion (first : rest)
+
+    -- Intersection type: A&B&C
+    intersectionTypeP = do
+        first <- atomicTypeP
+        rest <- many (symbol "&" *> atomicTypeP)
+        pure $ case rest of
+            [] -> first
+            _  -> TIntersection (first : rest)
+
+    -- Atomic type or parenthesized intersection (for DNF)
+    atomicTypeP = choice
+        [ parens intersectionTypeP  -- (A&B) for DNF
+        , simpleTypeP
+        ]
+
+    -- Simple (non-compound) type
+    simpleTypeP = choice
+        [ TInt <$ reserved "int"
+        , TFloat <$ reserved "float"
+        , TString <$ reserved "string"
+        , TBool <$ reserved "bool"
+        , TArray Nothing <$ reserved "array"
+        , TObject Nothing <$ reserved "object"
+        , TCallable <$ reserved "callable"
+        , TIterable <$ reserved "iterable"
+        , TMixed <$ reserved "mixed"
+        , TVoid <$ reserved "void"
+        , TNever <$ reserved "never"
+        , TNull <$ reserved "null"
+        , TSelf <$ reserved "self"
+        , TStatic <$ reserved "static"
+        , TParent <$ reserved "parent"
+        , TClass <$> qualifiedNameP
+        ]
 
 -- | Parse expression
 exprP :: Parser (Located Expr)
@@ -447,8 +663,16 @@ operatorTable =
     , [ infixL "|" (ExprBinary OpBitOr) ]
     , [ infixL "&&" (ExprBinary OpAnd) ]
     , [ infixL "||" (ExprBinary OpOr) ]
+    , [ Postfix ternaryP ]  -- Ternary operator: expr ? expr : expr
     , [ infixR "??" (ExprBinary OpCoalesce) ]
-    , [ infixR "=" ExprAssign ]
+    , [ infixR "??=" (\l r -> ExprAssignOp OpCoalesce (wrapLoc l) (wrapLoc r))  -- PHP 7.4
+      , infixR "+=" (\l r -> ExprAssignOp OpAdd (wrapLoc l) (wrapLoc r))
+      , infixR "-=" (\l r -> ExprAssignOp OpSub (wrapLoc l) (wrapLoc r))
+      , infixR "*=" (\l r -> ExprAssignOp OpMul (wrapLoc l) (wrapLoc r))
+      , infixR "/=" (\l r -> ExprAssignOp OpDiv (wrapLoc l) (wrapLoc r))
+      , infixR ".=" (\l r -> ExprAssignOp OpConcat (wrapLoc l) (wrapLoc r))
+      , infixR "=" ExprAssign
+      ]
     ]
   where
     prefix name f = Prefix (f . wrapLoc <$ symbol name)
@@ -456,18 +680,70 @@ operatorTable =
     infixR name f = InfixR ((\l r -> f (wrapLoc l) (wrapLoc r)) <$ symbol name)
     infixN name f = InfixN ((\l r -> f (wrapLoc l) (wrapLoc r)) <$ symbol name)
 
+    -- Ternary operator: cond ? then : else or cond ?: else (elvis)
+    ternaryP = do
+        _ <- symbol "?"
+        thenExpr <- optional exprP  -- Elvis operator allows omitting middle
+        _ <- symbol ":"
+        elseExpr <- exprP
+        pure $ \cond -> ExprTernary (wrapLoc cond) (fmap wrapLoc thenExpr) (wrapLoc $ locNode elseExpr)
+
     wrapLoc :: Expr -> Located Expr
     wrapLoc e = Located (SourcePos "" 0 0) e
 
 -- | Parse a term (base expression)
 termP :: Parser Expr
-termP = choice
-    [ ExprLiteral <$> literalP
-    , ExprVariable <$> variableP
-    , try callP
-    , ExprConstant <$> qualifiedNameP
-    , parens (locNode <$> exprP)
-    ]
+termP = do
+    base <- choice
+        [ ExprLiteral <$> literalP
+        , ExprVariable <$> variableP
+        , try newP
+        , try callP
+        , try arrowFunctionP
+        , try closureP
+        , ExprConstant <$> qualifiedNameP
+        , parens (locNode <$> exprP)
+        ]
+    postfixP base
+  where
+    -- Handle postfix operations: method calls, property access, array access
+    postfixP :: Expr -> Parser Expr
+    postfixP base = do
+        ops <- many postfixOpP
+        pure $ foldl applyPostfix base ops
+
+    postfixOpP = choice
+        [ MethodCall <$> (symbol "->" *> nameP) <*> parens (commaSep argumentP)
+        , NullsafeMethodCall <$> (symbol "?->" *> nameP) <*> parens (commaSep argumentP)
+        , PropertyAccess <$> (symbol "->" *> nameP)
+        , NullsafePropertyAccess <$> (symbol "?->" *> nameP)
+        , ArrayAccess <$> brackets (optional exprP)
+        ]
+
+    applyPostfix base op = case op of
+        MethodCall name args -> ExprMethodCall (wrapLoc base) name args
+        NullsafeMethodCall name args -> ExprNullsafeMethodCall (wrapLoc base) name args
+        PropertyAccess name -> ExprPropertyAccess (wrapLoc base) name
+        NullsafePropertyAccess name -> ExprNullsafePropertyAccess (wrapLoc base) name
+        ArrayAccess idx -> ExprArrayAccess (wrapLoc base) idx
+
+    wrapLoc e = Located (SourcePos "" 0 0) e
+
+-- | Postfix operation types
+data PostfixOp
+    = MethodCall Name [Argument]
+    | NullsafeMethodCall Name [Argument]
+    | PropertyAccess Name
+    | NullsafePropertyAccess Name
+    | ArrayAccess (Maybe (Located Expr))
+
+-- | Parse new expression
+newP :: Parser Expr
+newP = do
+    reserved "new"
+    className <- qualifiedNameP
+    args <- option [] (parens (commaSep argumentP))
+    pure $ ExprNew className args
 
 -- | Parse function call
 callP :: Parser Expr
@@ -475,6 +751,42 @@ callP = do
     name <- qualifiedNameP
     args <- parens (commaSep argumentP)
     pure $ ExprCall (Located (SourcePos "" 0 0) (ExprConstant name)) args
+
+-- | Parse arrow function (PHP 7.4+)
+arrowFunctionP :: Parser Expr
+arrowFunctionP = do
+    reserved "fn"
+    params <- parens (commaSep parameterP)
+    ret <- optional returnTypeP
+    _ <- symbol "=>"
+    expr <- exprP
+    pure ExprArrowFunction
+        { arrowParams = params
+        , arrowReturn = ret
+        , arrowExpr = expr
+        }
+
+-- | Parse closure
+closureP :: Parser Expr
+closureP = do
+    static <- option False (True <$ reserved "static")
+    reserved "function"
+    params <- parens (commaSep parameterP)
+    uses <- option [] (reserved "use" *> parens (commaSep useVarP))
+    ret <- optional returnTypeP
+    body <- braces (many statementP)
+    pure ExprClosure
+        { closureStatic = static
+        , closureParams = params
+        , closureUses = uses
+        , closureReturn = ret
+        , closureBody = body
+        }
+  where
+    useVarP = do
+        byRef <- option False (True <$ symbol "&")
+        var <- variableP
+        pure (var, byRef)
 
 -- | Parse argument
 argumentP :: Parser Argument
@@ -510,14 +822,22 @@ stringP = lexeme $ choice
     singleQuoted = char '\'' *> (T.pack <$> manyTill L.charLiteral (char '\''))
     doubleQuoted = char '"' *> (T.pack <$> manyTill L.charLiteral (char '"'))
 
--- | Parse array literal
+-- | Parse array literal (with PHP 7.4+ spread operator)
 arrayP :: Parser [(Maybe (Located Expr), Located Expr)]
 arrayP = brackets (commaSep arrayItemP) <|> (reserved "array" *> parens (commaSep arrayItemP))
   where
     arrayItemP = do
-        key <- optional $ try (exprP <* symbol "=>")
-        value <- exprP
-        pure (key, value)
+        -- Spread operator: ...$array
+        spread <- option False (True <$ symbol "...")
+        if spread
+            then do
+                value <- exprP
+                -- Represent spread as special key-value pair
+                pure (Nothing, value)  -- Spread items have no key
+            else do
+                key <- optional $ try (exprP <* symbol "=>")
+                value <- exprP
+                pure (key, value)
 
 -- | Convert Megaparsec source position to our SourcePos
 toSourcePos :: SourcePos -> Sanctify.AST.SourcePos

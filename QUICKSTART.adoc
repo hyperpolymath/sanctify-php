@@ -1,0 +1,468 @@
+= Sanctify-PHP Quick Start Guide
+:toc:
+:toclevels: 3
+:icons: font
+
+== Overview
+
+Sanctify-PHP is a comprehensive PHP security analysis and hardening tool built in Haskell. It analyzes PHP 8.2+ code for security vulnerabilities and automatically applies safe transformations.
+
+**Key Features:**
+
+* PHP 8.2+ parser (readonly classes, DNF types, enums, attributes)
+* OWASP Top 10 vulnerability detection
+* WordPress-specific security checks
+* Interactive fix mode with previews
+* Multiple output formats (text, JSON, SARIF, HTML)
+* Watch mode for live development
+* Infrastructure export (php.ini, nginx, Guix/Nix)
+
+== Installation
+
+=== Using Cabal (Recommended)
+
+[source,bash]
+----
+# Clone the repository
+git clone https://github.com/hyperpolymath/sanctify-php.git
+cd sanctify-php
+
+# Build and install
+cabal update
+cabal install
+
+# Verify installation
+sanctify --version
+----
+
+=== Using Stack
+
+[source,bash]
+----
+# Clone the repository
+git clone https://github.com/hyperpolymath/sanctify-php.git
+cd sanctify-php
+
+# Build and install
+stack setup
+stack build
+stack install
+
+# Verify installation
+sanctify --version
+----
+
+=== Using Nix
+
+[source,bash]
+----
+# Install via Nix flake
+nix profile install github:hyperpolymath/sanctify-php
+
+# Or use in a dev shell
+nix develop github:hyperpolymath/sanctify-php
+----
+
+=== From Binary Release
+
+[source,bash]
+----
+# Download latest release for your platform
+wget https://github.com/hyperpolymath/sanctify-php/releases/download/v0.2.0/sanctify-linux-x86_64
+
+# Make executable
+chmod +x sanctify-linux-x86_64
+sudo mv sanctify-linux-x86_64 /usr/local/bin/sanctify
+
+# Verify installation
+sanctify --version
+----
+
+== Basic Usage
+
+=== Analyze a Single File
+
+[source,bash]
+----
+# Basic analysis
+sanctify analyze myfile.php
+
+# With verbose output
+sanctify analyze myfile.php --verbose
+
+# Filter by severity
+sanctify analyze myfile.php --severity=critical,high
+
+# Filter by vulnerability type
+sanctify analyze myfile.php --type=sql,xss
+----
+
+=== Analyze a Directory
+
+[source,bash]
+----
+# Analyze all PHP files recursively
+sanctify analyze /path/to/wordpress/wp-content/plugins/my-plugin/
+
+# Watch for changes (re-analyze on save)
+sanctify analyze /path/to/plugin/ --watch
+----
+
+=== Interactive Fix Mode
+
+[source,bash]
+----
+# Review and apply fixes interactively
+sanctify fix myfile.php --interactive
+
+# Options for each fix:
+# y - Apply this fix
+# N - Skip this fix (default)
+# d - Show diff again
+# s - Skip all remaining fixes
+----
+
+=== Automatic Fixes
+
+[source,bash]
+----
+# Apply fixes without prompts (dangerous!)
+sanctify fix myfile.php --in-place
+
+# Preview changes without modifying files
+sanctify fix myfile.php --diff
+
+# Apply only specific types of fixes
+sanctify fix myfile.php --type=strict,escape --interactive
+----
+
+=== Output Formats
+
+[source,bash]
+----
+# Human-readable text (default)
+sanctify analyze myfile.php --format=text
+
+# Machine-readable JSON
+sanctify analyze myfile.php --format=json > results.json
+
+# SARIF format (for CI/CD integration)
+sanctify analyze myfile.php --format=sarif > results.sarif
+
+# HTML report
+sanctify analyze myfile.php --format=html > report.html
+----
+
+== Configuration
+
+Create `.sanctify.yaml` in your project root:
+
+[source,yaml]
+----
+# Sanctify-PHP Configuration
+# SPDX-License-Identifier: PMPL-1.0-or-later
+
+# Analysis options
+analysis:
+  # Severity levels to report
+  min-severity: medium  # critical, high, medium, low, info
+
+  # Vulnerability types to check
+  checks:
+    - sql-injection
+    - xss
+    - csrf
+    - command-injection
+    - path-traversal
+    - unsafe-deserialization
+    - weak-crypto
+    - hardcoded-secrets
+    - redos
+    - ssrf
+    - xxe
+    - toctou
+
+# WordPress-specific options
+wordpress:
+  enabled: true
+  checks:
+    - missing-nonce
+    - missing-capability
+    - ajax-security
+    - rest-api-security
+    - file-upload-security
+
+# Transform options
+transforms:
+  # Add declare(strict_types=1)
+  strict-types: true
+
+  # Add type hints
+  type-hints: true
+
+  # Escape output
+  escape-output: true
+
+  # Sanitize input
+  sanitize-input: true
+
+  # Prepare SQL queries
+  prepare-sql: true
+
+  # Modernize crypto
+  modernize-crypto: true
+
+# Exclusions
+exclude:
+  paths:
+    - vendor/
+    - node_modules/
+    - tests/
+  files:
+    - "*.min.php"
+----
+
+== Common Workflows
+
+=== WordPress Plugin Security Audit
+
+[source,bash]
+----
+# 1. Analyze plugin for vulnerabilities
+sanctify analyze wp-content/plugins/my-plugin/ \
+  --format=html > audit-report.html
+
+# 2. Review critical issues
+sanctify analyze wp-content/plugins/my-plugin/ \
+  --severity=critical,high \
+  --format=text
+
+# 3. Apply safe fixes interactively
+sanctify fix wp-content/plugins/my-plugin/ \
+  --interactive \
+  --type=strict,escape
+
+# 4. Export hardened php.ini
+sanctify export-php-ini wp-content/plugins/my-plugin/ \
+  > php.ini.hardened
+----
+
+=== CI/CD Integration
+
+[source,bash]
+----
+# GitHub Actions / GitLab CI
+sanctify analyze src/ \
+  --format=sarif \
+  --severity=critical,high \
+  > results.sarif
+
+# Exit with error if critical issues found
+if grep -q '"level":"error"' results.sarif; then
+  echo "Critical security issues found!"
+  exit 1
+fi
+----
+
+=== Development Watch Mode
+
+[source,bash]
+----
+# Monitor files and re-analyze on changes
+sanctify analyze src/ \
+  --watch \
+  --format=text \
+  --severity=high,critical
+----
+
+=== Generate Infrastructure Config
+
+[source,bash]
+----
+# Export hardened php.ini
+sanctify export-php-ini /path/to/app/ > php.ini
+
+# Export nginx security headers
+sanctify export-nginx /path/to/app/ > nginx-security.conf
+
+# Export Guix package definition
+sanctify export-guix /path/to/app/ > guix.scm
+----
+
+== Output Interpretation
+
+=== Severity Levels
+
+[cols="1,3,2"]
+|===
+|Severity |Description |Action
+
+|**Critical**
+|Exploitable vulnerability with high impact
+|Fix immediately
+
+|**High**
+|Serious security issue, likely exploitable
+|Fix within 24 hours
+
+|**Medium**
+|Security issue that requires specific conditions
+|Fix within 1 week
+
+|**Low**
+|Minor issue or best practice violation
+|Fix when convenient
+
+|**Info**
+|Informational, not a direct security risk
+|Consider improvement
+|===
+
+=== Vulnerability Types
+
+**SQL Injection (CWE-89)**
+
+* Unsafe database queries with user input
+* Missing $wpdb->prepare() in WordPress
+* Direct concatenation in SQL strings
+
+**Cross-Site Scripting - XSS (CWE-79)**
+
+* Unescaped output of user input
+* Missing esc_html(), esc_attr() in WordPress
+* Unsafe echo/print statements
+
+**Cross-Site Request Forgery - CSRF (CWE-352)**
+
+* Missing nonce verification in WordPress
+* State-changing operations without CSRF tokens
+* Unsafe form submissions
+
+**Command Injection (CWE-78)**
+
+* shell_exec(), exec(), system() with user input
+* Unsafe use of passthru(), proc_open()
+* Missing input validation
+
+**Path Traversal (CWE-22)**
+
+* File operations with unsanitized paths
+* Missing realpath() validation
+* Directory traversal vulnerabilities
+
+**Advanced Threats**
+
+* ReDoS - Catastrophic backtracking in regex
+* SSRF - Server-Side Request Forgery
+* XXE - XML External Entity injection
+* TOCTOU - Time-of-check-time-of-use races
+* Object Injection - Unsafe unserialize()
+* Mass Assignment - Unvalidated array assignments
+
+== Examples
+
+=== Example 1: Vulnerable Code
+
+[source,php]
+----
+<?php
+// Vulnerable to SQL injection
+$id = $_GET['id'];
+$wpdb->query("DELETE FROM posts WHERE id = $id");
+
+// Vulnerable to XSS
+echo "Welcome, " . $_GET['name'];
+----
+
+**Sanctify Analysis:**
+
+[source,text]
+----
+test.php:4:1: [CRITICAL] SQL Injection (CWE-89)
+  Direct database query with user input
+  Suggestion: Use $wpdb->prepare() with placeholders
+
+test.php:7:1: [HIGH] Cross-Site Scripting (CWE-79)
+  Unescaped output of user input
+  Suggestion: Wrap with esc_html()
+----
+
+=== Example 2: Fixed Code
+
+[source,php]
+----
+<?php
+declare(strict_types=1);
+
+// Safe: prepared statement
+$id = absint($_GET['id']);
+$wpdb->query($wpdb->prepare(
+    "DELETE FROM posts WHERE id = %d",
+    $id
+));
+
+// Safe: escaped output
+$name = sanitize_text_field($_GET['name']);
+echo esc_html("Welcome, " . $name);
+----
+
+**Sanctify Analysis:**
+
+[source,text]
+----
+✓ No security issues found
+----
+
+== Troubleshooting
+
+=== Common Issues
+
+**Parser Errors**
+
+[source,text]
+----
+Error: Parse error at line 42: unexpected 'match'
+----
+
+*Solution:* Ensure you're using PHP 8.0+ syntax. Sanctify supports PHP 8.2+ features.
+
+**False Positives**
+
+If Sanctify reports issues in safe code, create a suppression comment:
+
+[source,php]
+----
+// @sanctify-ignore sql-injection
+$wpdb->query($safe_query_from_trusted_source);
+----
+
+**Missing Dependencies**
+
+[source,bash]
+----
+# Install system dependencies (Fedora/RHEL)
+sudo dnf install gmp-devel libffi-devel zlib-devel
+
+# Install system dependencies (Debian/Ubuntu)
+sudo apt-get install libgmp-dev libffi-dev zlib1g-dev
+----
+
+== Next Steps
+
+* Read the full documentation: link:docs/USER-GUIDE.adoc[User Guide]
+* Explore advanced features: link:docs/ADVANCED.adoc[Advanced Usage]
+* Learn about WordPress integration: link:docs/WORDPRESS.adoc[WordPress Guide]
+* Contribute to development: link:CONTRIBUTING.adoc[Contributing Guide]
+* Report issues: https://github.com/hyperpolymath/sanctify-php/issues
+
+== Support
+
+* GitHub Issues: https://github.com/hyperpolymath/sanctify-php/issues
+* Documentation: https://sanctify-php.hyperpolymath.dev
+* Community Chat: #sanctify-php on Matrix
+
+== License
+
+Sanctify-PHP is licensed under the PMPL-1.0-or-later license.
+
+See link:LICENSE[LICENSE] for details.

@@ -1,0 +1,472 @@
+= Sanctify-PHP User Guide
+:toc: left
+:toclevels: 4
+:icons: font
+:source-highlighter: rouge
+
+== Introduction
+
+Sanctify-PHP is a comprehensive security analysis and hardening tool for PHP applications, with special emphasis on WordPress plugins and themes. Built in Haskell using Megaparsec for robust parsing, it provides:
+
+* **Deep Security Analysis**: OWASP Top 10 + advanced threats (ReDoS, SSRF, XXE, TOCTOU)
+* **WordPress Expertise**: Specialized checks for nonce verification, capabilities, AJAX/REST API security
+* **Automatic Hardening**: Safe transformations (strict types, sanitization, type hints)
+* **Modern PHP Support**: Full PHP 8.2+ parser (readonly classes, DNF types, enums, attributes)
+* **Developer-Friendly**: Interactive fix mode, watch mode, multiple output formats
+
+=== Why Sanctify-PHP?
+
+Most PHP security tools focus on general vulnerabilities. Sanctify-PHP goes further:
+
+1. **WordPress-Native**: Understands `$wpdb->prepare()`, `esc_html()`, `wp_verify_nonce()`, etc.
+2. **Advanced Threats**: Detects ReDoS, SSRF, XXE, timing attacks, object injection
+3. **Code Generation**: Not just detection—automatically applies fixes with AST manipulation
+4. **Type Awareness**: Infers and adds type hints for better code quality
+5. **Infrastructure**: Exports hardened php.ini, nginx configs, Guix packages
+
+== Installation
+
+=== System Requirements
+
+* **Operating System**: Linux, macOS, Windows (WSL)
+* **Dependencies**: GHC 9.4+, Cabal 3.8+, or Stack 2.13+
+* **Memory**: 2GB RAM minimum (4GB recommended for large projects)
+* **Disk Space**: 500MB for installation
+
+=== Method 1: Using Cabal (Recommended)
+
+[source,bash]
+----
+# Install GHC and Cabal via GHCup
+curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
+
+# Clone and build
+git clone https://github.com/hyperpolymath/sanctify-php.git
+cd sanctify-php
+cabal update
+cabal build
+cabal install
+
+# Verify
+sanctify --version
+----
+
+=== Method 2: Using Stack
+
+[source,bash]
+----
+# Install Stack
+curl -sSL https://get.haskellstack.org/ | sh
+
+# Clone and build
+git clone https://github.com/hyperpolymath/sanctify-php.git
+cd sanctify-php
+stack setup
+stack build
+stack install
+
+# Verify
+sanctify --version
+----
+
+=== Method 3: Using Nix (Reproducible)
+
+[source,bash]
+----
+# With Nix flakes enabled
+nix profile install github:hyperpolymath/sanctify-php
+
+# Or in a dev shell
+nix develop github:hyperpolymath/sanctify-php
+----
+
+=== Method 4: Pre-built Binaries
+
+Download from https://github.com/hyperpolymath/sanctify-php/releases
+
+[source,bash]
+----
+# Linux x86_64
+wget https://github.com/hyperpolymath/sanctify-php/releases/download/v0.2.0/sanctify-linux-x86_64
+chmod +x sanctify-linux-x86_64
+sudo mv sanctify-linux-x86_64 /usr/local/bin/sanctify
+
+# macOS (ARM64)
+wget https://github.com/hyperpolymath/sanctify-php/releases/download/v0.2.0/sanctify-macos-arm64
+chmod +x sanctify-macos-arm64
+sudo mv sanctify-macos-arm64 /usr/local/bin/sanctify
+----
+
+== Quick Start
+
+=== Analyze a File
+
+[source,bash]
+----
+# Basic analysis
+sanctify analyze index.php
+
+# Output:
+# index.php:15:1: [HIGH] Cross-Site Scripting (CWE-79)
+#   Unescaped output of user input ($_GET['name'])
+#   Suggestion: Wrap with esc_html()
+#
+# index.php:23:1: [CRITICAL] SQL Injection (CWE-89)
+#   Direct database query with user input
+#   Suggestion: Use $wpdb->prepare() with placeholders
+#
+# Found 2 issues (1 critical, 1 high)
+----
+
+=== Apply Fixes Interactively
+
+[source,bash]
+----
+sanctify fix index.php --interactive
+
+# Output:
+# index.php:15:1: [HIGH] Cross-Site Scripting (CWE-79)
+#   Unescaped output of user input
+#
+# - echo "Welcome, " . $_GET['name'];
+# + echo esc_html("Welcome, " . $_GET['name']);
+#
+# Apply this fix? [y/N/d/s] y
+#   ✓ Applied
+----
+
+=== Analyze a WordPress Plugin
+
+[source,bash]
+----
+sanctify analyze wp-content/plugins/my-plugin/ \
+  --severity=critical,high \
+  --format=html > audit.html
+----
+
+== Commands
+
+=== analyze
+
+Analyze PHP files for security vulnerabilities.
+
+[source,bash]
+----
+sanctify analyze <path> [options]
+----
+
+**Options:**
+
+* `--format=<fmt>`: Output format (text, json, sarif, html)
+* `--severity=<levels>`: Filter by severity (critical, high, medium, low, info)
+* `--type=<types>`: Filter by vulnerability type (sql, xss, csrf, etc.)
+* `--watch`: Monitor files and re-analyze on changes
+* `--verbose`: Show detailed analysis information
+
+**Examples:**
+
+[source,bash]
+----
+# Analyze with JSON output
+sanctify analyze src/ --format=json > results.json
+
+# Only critical and high severity
+sanctify analyze src/ --severity=critical,high
+
+# Only SQL injection and XSS
+sanctify analyze src/ --type=sql,xss
+
+# Watch mode for development
+sanctify analyze src/ --watch --severity=high,critical
+----
+
+=== fix
+
+Apply security fixes to PHP files.
+
+[source,bash]
+----
+sanctify fix <path> [options]
+----
+
+**Options:**
+
+* `--interactive`: Prompt for each fix (recommended)
+* `--in-place`: Apply fixes without prompts (dangerous!)
+* `--diff`: Show unified diff of changes
+* `--type=<types>`: Apply only specific fix types
+* `--severity=<levels>`: Fix only specific severity levels
+
+**Fix Types:**
+
+* `strict`: Add `declare(strict_types=1)`
+* `escape`: Wrap output with escaping functions
+* `sanitize`: Wrap input with sanitization functions
+* `prepare`: Wrap SQL queries with `$wpdb->prepare()`
+* `typehints`: Add inferred type hints
+* `crypto`: Modernize cryptographic functions
+
+**Examples:**
+
+[source,bash]
+----
+# Interactive mode (recommended)
+sanctify fix index.php --interactive
+
+# Apply all fixes (dangerous!)
+sanctify fix index.php --in-place
+
+# Preview changes
+sanctify fix index.php --diff
+
+# Apply only escaping and sanitization
+sanctify fix src/ --type=escape,sanitize --interactive
+----
+
+=== report
+
+Generate detailed security reports.
+
+[source,bash]
+----
+sanctify report <path> [options]
+----
+
+**Options:**
+
+* `--format=<fmt>`: Report format (html, json, sarif, text)
+* `--output=<file>`: Write report to file
+* `--template=<tpl>`: Use custom report template
+
+**Examples:**
+
+[source,bash]
+----
+# HTML report with executive summary
+sanctify report src/ --format=html > audit.html
+
+# JSON for programmatic processing
+sanctify report src/ --format=json > data.json
+
+# SARIF for GitHub/GitLab integration
+sanctify report src/ --format=sarif > results.sarif
+----
+
+=== export-php-ini
+
+Export hardened php.ini configuration.
+
+[source,bash]
+----
+sanctify export-php-ini <path> > php.ini
+----
+
+Generates php.ini with security hardening based on detected issues:
+
+* Disables dangerous functions found in code
+* Sets memory limits based on usage patterns
+* Configures opcache for detected PHP version
+* Enables security headers
+
+=== export-nginx
+
+Export nginx security configuration.
+
+[source,bash]
+----
+sanctify export-nginx <path> > nginx-security.conf
+----
+
+Generates nginx config with:
+
+* Security headers (CSP, HSTS, X-Frame-Options)
+* PHP security settings
+* Rate limiting rules
+* Access restrictions
+
+=== export-guix
+
+Export Guix package definition.
+
+[source,bash]
+----
+sanctify export-guix <path> > guix.scm
+----
+
+Generates reproducible Guix package with:
+
+* PHP version pinning
+* Extension requirements
+* Security settings
+* Deployment configuration
+
+== Configuration
+
+Create `.sanctify.yaml` in your project root:
+
+[source,yaml]
+----
+# Sanctify-PHP Configuration
+# SPDX-License-Identifier: PMPL-1.0-or-later
+
+analysis:
+  min-severity: medium
+  checks:
+    - sql-injection
+    - xss
+    - csrf
+    - command-injection
+    - path-traversal
+    - unsafe-deserialization
+    - weak-crypto
+    - hardcoded-secrets
+    - redos
+    - ssrf
+    - xxe
+    - toctou
+    - timing-attack
+    - object-injection
+    - mass-assignment
+
+wordpress:
+  enabled: true
+  checks:
+    - missing-nonce
+    - missing-capability
+    - ajax-security
+    - rest-api-security
+    - file-upload-security
+    - transient-security
+    - cron-security
+    - block-security
+    - i18n-security
+
+transforms:
+  strict-types: true
+  type-hints: true
+  escape-output: true
+  sanitize-input: true
+  prepare-sql: true
+  modernize-crypto: true
+  add-nonce: false  # Manual review recommended
+  add-capability: false  # Manual review recommended
+
+exclude:
+  paths:
+    - vendor/
+    - node_modules/
+    - tests/
+    - build/
+  files:
+    - "*.min.php"
+    - "*.cache.php"
+
+# Severity thresholds for exit codes
+ci:
+  fail-on-critical: true
+  fail-on-high: true
+  fail-on-medium: false
+----
+
+== Vulnerability Reference
+
+=== SQL Injection (CWE-89)
+
+**Description**: Untrusted data used in SQL queries without sanitization.
+
+**Risk**: Database compromise, data theft, privilege escalation.
+
+**Detection**:
+----
+<?php
+// VULNERABLE
+$id = $_GET['id'];
+$wpdb->query("SELECT * FROM users WHERE id = $id");
+
+// VULNERABLE
+mysqli_query($conn, "DELETE FROM posts WHERE id = " . $_POST['id']);
+----
+
+**Fix**:
+----
+<?php
+// SAFE
+$id = absint($_GET['id']);
+$wpdb->query($wpdb->prepare("SELECT * FROM users WHERE id = %d", $id));
+
+// SAFE
+$stmt = $conn->prepare("DELETE FROM posts WHERE id = ?");
+$stmt->bind_param("i", $_POST['id']);
+$stmt->execute();
+----
+
+**WordPress-Specific**:
+
+* Always use `$wpdb->prepare()` for queries with user input
+* Use `%d` for integers, `%s` for strings, `%f` for floats
+* WordPress escaping functions are NOT sufficient for SQL queries
+
+=== Cross-Site Scripting - XSS (CWE-79)
+
+**Description**: Untrusted data output to HTML without escaping.
+
+**Risk**: Session hijacking, phishing, malware distribution.
+
+**Detection**:
+----
+<?php
+// VULNERABLE
+echo $_GET['name'];
+
+// VULNERABLE
+echo "<div>" . $_POST['comment'] . "</div>";
+
+// VULNERABLE
+echo '<input value="' . $_GET['value'] . '">';
+----
+
+**Fix**:
+----
+<?php
+// SAFE: Plain text context
+echo esc_html($_GET['name']);
+
+// SAFE: HTML context
+echo wp_kses_post($_POST['comment']);
+
+// SAFE: Attribute context
+echo '<input value="' . esc_attr($_GET['value']) . '">';
+----
+
+**Escaping Functions**:
+
+[cols="2,3,2"]
+|===
+|Function |Context |Use Case
+
+|`esc_html()`
+|HTML text
+|Plain text output
+
+|`esc_attr()`
+|HTML attributes
+|Input values, data attributes
+
+|`esc_url()`
+|URLs
+|Links, redirects
+
+|`esc_js()`
+|JavaScript
+|Inline scripts
+
+|`wp_kses_post()`
+|HTML content
+|Rich text (allows safe tags)
+
+|`wp_kses()`
+|HTML with custom rules
+|Custom allowed tags
+|===
+
+This is part 1 of the User Guide. Continue to link:USER-GUIDE-PART2.adoc[Part 2: Advanced Features].

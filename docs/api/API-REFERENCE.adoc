@@ -1,0 +1,666 @@
+= Sanctify-PHP API Reference
+:toc: left
+:toclevels: 4
+:icons: font
+:source-highlighter: rouge
+
+link:../developer/EXTENDING.adoc[← Back to Extending Guide]
+
+== Module: Sanctify.AST
+
+Core AST types for PHP 8.2+ representation.
+
+=== Types
+
+==== PhpFile
+
+Complete PHP source file representation.
+
+[source,haskell]
+----
+data PhpFile = PhpFile
+    { phpDeclareStrict :: Bool
+    -- ^ Whether file has declare(strict_types=1)
+    , phpNamespace :: Maybe QualifiedName
+    -- ^ Optional namespace declaration
+    , phpUses :: [Use]
+    -- ^ Use statements (imports)
+    , phpStatements :: [Located Statement]
+    -- ^ Top-level statements
+    } deriving (Show, Eq, Generic)
+----
+
+==== Statement
+
+PHP statements.
+
+[source,haskell]
+----
+data Statement
+    = StmtExpr (Located Expr)
+    -- ^ Expression statement
+    | StmtReturn (Maybe (Located Expr))
+    -- ^ Return statement with optional value
+    | StmtIf (Located Expr) [Located Statement] (Maybe [Located Statement])
+    -- ^ If-then-else
+    | StmtWhile (Located Expr) [Located Statement]
+    -- ^ While loop
+    | StmtFor [Located Expr] [Located Expr] [Located Expr] [Located Statement]
+    -- ^ For loop (init, condition, increment, body)
+    | StmtForeach (Located Expr) Variable (Maybe Variable) [Located Statement]
+    -- ^ Foreach loop (iterable, value, optional key, body)
+    | StmtSwitch (Located Expr) [SwitchCase]
+    -- ^ Switch statement
+    | StmtMatch (Located Expr) [MatchArm]
+    -- ^ Match expression (PHP 8.0+)
+    | StmtTry [Located Statement] [CatchClause] (Maybe [Located Statement])
+    -- ^ Try-catch-finally
+    | StmtThrow (Located Expr)
+    -- ^ Throw exception
+    | StmtDeclare [Directive] [Located Statement]
+    -- ^ Declare directive
+    | StmtGlobal [Variable]
+    -- ^ Global variable declaration
+    | StmtStatic [StaticVar]
+    -- ^ Static variable declaration
+    | StmtUnset [Located Expr]
+    -- ^ Unset variables
+    | StmtBreak (Maybe Int)
+    -- ^ Break statement with optional level
+    | StmtContinue (Maybe Int)
+    -- ^ Continue statement with optional level
+    | StmtEcho [Located Expr]
+    -- ^ Echo statement
+    | StmtFunction FunctionDef
+    -- ^ Function definition
+    | StmtClass ClassDef
+    -- ^ Class definition
+    | StmtInterface InterfaceDef
+    -- ^ Interface definition (PHP 8.0+)
+    | StmtTrait TraitDef
+    -- ^ Trait definition
+    | StmtEnum EnumDef
+    -- ^ Enum definition (PHP 8.1+)
+    | StmtNamespace QualifiedName [Located Statement]
+    -- ^ Namespace block
+    | StmtUse Use
+    -- ^ Use statement
+    deriving (Show, Eq, Generic)
+----
+
+==== Expr
+
+PHP expressions.
+
+[source,haskell]
+----
+data Expr
+    = ExprLiteral Literal
+    | ExprVariable Variable
+    | ExprBinaryOp BinOp (Located Expr) (Located Expr)
+    | ExprUnaryOp UnOp (Located Expr)
+    | ExprTernary (Located Expr) (Located Expr) (Located Expr)
+    | ExprElvis (Located Expr) (Located Expr)
+    | ExprNullCoalesce (Located Expr) (Located Expr)
+    | ExprAssign (Located Expr) (Located Expr)
+    | ExprAssignOp BinOp (Located Expr) (Located Expr)
+    | ExprCall (Located Expr) [Argument]
+    | ExprMethodCall (Located Expr) Name [Argument]
+    | ExprNullsafeMethodCall (Located Expr) Name [Argument]  -- PHP 8.0+
+    | ExprPropertyAccess (Located Expr) Name
+    | ExprNullsafePropertyAccess (Located Expr) Name  -- PHP 8.0+
+    | ExprArrayAccess (Located Expr) (Maybe (Located Expr))
+    | ExprArray [ArrayElement]
+    | ExprList [Variable]
+    | ExprClosure ClosureDef
+    | ExprArrowFunction ArrowFunctionDef  -- PHP 7.4+
+    | ExprYield (Maybe (Located Expr)) (Maybe (Located Expr))
+    | ExprYieldFrom (Located Expr)
+    | ExprThrow (Located Expr)  -- PHP 8.0+
+    | ExprMatch MatchExpr  -- PHP 8.0+
+    | ExprInstanceof (Located Expr) PhpType
+    | ExprClone (Located Expr)
+    | ExprNew PhpType [Argument]
+    | ExprClassConstAccess (Located Expr) Name
+    deriving (Show, Eq, Generic)
+----
+
+==== PhpType
+
+Type system representation.
+
+[source,haskell]
+----
+data PhpType
+    = TSimple QualifiedName
+    -- ^ Simple type (int, string, ClassName)
+    | TUnion [PhpType]
+    -- ^ Union type A|B|C (PHP 8.0+)
+    | TIntersection [PhpType]
+    -- ^ Intersection type A&B&C (PHP 8.1+)
+    | TNullable PhpType
+    -- ^ Nullable type ?T
+    | TArray
+    -- ^ Array type
+    | TMixed
+    -- ^ Mixed type (PHP 8.0+)
+    deriving (Show, Eq, Generic)
+----
+
+==== ClassDef
+
+Class definition including readonly modifier.
+
+[source,haskell]
+----
+data ClassDef = ClassDef
+    { className :: Name
+    , classModifiers :: [Modifier]
+    , classReadonly :: Bool  -- PHP 8.2+
+    , classExtends :: Maybe QualifiedName
+    , classImplements :: [QualifiedName]
+    , classMembers :: [ClassMember]
+    , classAttributes :: [Attribute]  -- PHP 8.0+
+    } deriving (Show, Eq, Generic)
+----
+
+==== EnumDef
+
+Enum definition (PHP 8.1+).
+
+[source,haskell]
+----
+data EnumDef = EnumDef
+    { enumName :: Name
+    , enumBackedType :: Maybe PhpType  -- : string or : int
+    , enumCases :: [EnumCase]
+    , enumMethods :: [ClassMember]
+    , enumAttributes :: [Attribute]
+    } deriving (Show, Eq, Generic)
+
+data EnumCase = EnumCase
+    { caseName :: Name
+    , caseValue :: Maybe Literal  -- For backed enums
+    , caseAttributes :: [Attribute]
+    } deriving (Show, Eq, Generic)
+----
+
+== Module: Sanctify.Parser
+
+Parser functions for PHP source code.
+
+=== Functions
+
+==== parsePhpString
+
+Parse PHP source code from a string.
+
+[source,haskell]
+----
+parsePhpString
+    :: FilePath                  -- ^ Filename (for error messages)
+    -> Text                       -- ^ PHP source code
+    -> Either ParseErrorBundle PhpFile
+    -- ^ Parsed AST or parse error
+----
+
+**Example:**
+
+[source,haskell]
+----
+case parsePhpString "test.php" "<?php echo 'Hello';" of
+    Left err -> print err
+    Right ast -> print ast
+----
+
+==== parsePhpFile
+
+Parse PHP source code from a file.
+
+[source,haskell]
+----
+parsePhpFile
+    :: FilePath                  -- ^ Path to PHP file
+    -> IO (Either ParseErrorBundle PhpFile)
+    -- ^ Parsed AST or parse error
+----
+
+**Example:**
+
+[source,haskell]
+----
+result <- parsePhpFile "index.php"
+case result of
+    Left err -> putStrLn $ "Parse error: " ++ show err
+    Right ast -> analyze ast
+----
+
+== Module: Sanctify.Emit
+
+Code generation from AST back to PHP.
+
+=== Functions
+
+==== emitPhp
+
+Generate PHP source code from AST.
+
+[source,haskell]
+----
+emitPhp :: PhpFile -> Text
+----
+
+**Example:**
+
+[source,haskell]
+----
+let modified = transformStrict ast
+let code = emitPhp modified
+TIO.writeFile "output.php" code
+----
+
+==== emitStatement
+
+Generate PHP code for a single statement.
+
+[source,haskell]
+----
+emitStatement :: Located Statement -> Text
+----
+
+==== emitExpr
+
+Generate PHP code for an expression.
+
+[source,haskell]
+----
+emitExpr :: Located Expr -> Text
+----
+
+== Module: Sanctify.Analysis.Security
+
+Security vulnerability detection.
+
+=== Types
+
+==== SecurityIssue
+
+Represents a detected security vulnerability.
+
+[source,haskell]
+----
+data SecurityIssue = SecurityIssue
+    { issueType :: IssueType
+    , issueSeverity :: Severity
+    , issueLocation :: SourcePos
+    , issueDescription :: Text
+    , issueSuggestion :: Text
+    , issueCWE :: Maybe Text
+    , issueReferences :: [Text]
+    } deriving (Show, Eq, Generic, ToJSON, FromJSON)
+----
+
+==== IssueType
+
+Types of security vulnerabilities.
+
+[source,haskell]
+----
+data IssueType
+    = SQLInjection            -- CWE-89
+    | CrossSiteScripting      -- CWE-79
+    | CSRF                    -- CWE-352
+    | CommandInjection        -- CWE-78
+    | PathTraversal           -- CWE-22
+    | UnsafeDeserialization   -- CWE-502
+    | WeakCrypto              -- CWE-327
+    | HardcodedSecret         -- CWE-798
+    | DangerousFunction       -- Various CWEs
+    deriving (Show, Eq, Generic, ToJSON, FromJSON)
+----
+
+==== Severity
+
+Issue severity levels.
+
+[source,haskell]
+----
+data Severity
+    = Critical  -- Immediate action required
+    | High      -- Fix within 24 hours
+    | Medium    -- Fix within 1 week
+    | Low       -- Fix when convenient
+    | Info      -- Informational only
+    deriving (Show, Eq, Ord, Generic, ToJSON, FromJSON)
+----
+
+=== Functions
+
+==== analyzeSecurityIssues
+
+Main entry point for security analysis.
+
+[source,haskell]
+----
+analyzeSecurityIssues :: PhpFile -> [SecurityIssue]
+----
+
+**Example:**
+
+[source,haskell]
+----
+case parsePhpString "test.php" code of
+    Right ast -> do
+        let issues = analyzeSecurityIssues ast
+        let critical = filter (\i -> issueSeverity i == Critical) issues
+        mapM_ print critical
+    Left err -> error $ show err
+----
+
+==== checkSQLInjection
+
+Detect SQL injection vulnerabilities.
+
+[source,haskell]
+----
+checkSQLInjection :: Located Statement -> [SecurityIssue]
+----
+
+==== checkXSS
+
+Detect cross-site scripting vulnerabilities.
+
+[source,haskell]
+----
+checkXSS :: Located Statement -> [SecurityIssue]
+----
+
+==== checkCommandInjection
+
+Detect command injection vulnerabilities.
+
+[source,haskell]
+----
+checkCommandInjection :: Located Statement -> [SecurityIssue]
+----
+
+== Module: Sanctify.Analysis.Advanced
+
+Advanced security analysis (ReDoS, SSRF, XXE, etc.).
+
+=== Functions
+
+==== checkReDoS
+
+Detect regular expression denial of service.
+
+[source,haskell]
+----
+checkReDoS :: Located Expr -> [SecurityIssue]
+----
+
+**Detects:**
+* Nested quantifiers: `(.*)*`, `(.+)+`
+* Overlapping alternatives with quantifiers
+* Catastrophic backtracking patterns
+
+==== checkSSRF
+
+Detect server-side request forgery.
+
+[source,haskell]
+----
+checkSSRF :: Located Expr -> [SecurityIssue]
+----
+
+**Detects:**
+* `file_get_contents()` with user-controlled URLs
+* `wp_remote_get()` with untrusted input
+* `curl_exec()` with user-supplied URLs
+
+==== checkXXE
+
+Detect XML external entity injection.
+
+[source,haskell]
+----
+checkXXE :: Located Expr -> [SecurityIssue]
+----
+
+**Detects:**
+* `simplexml_load_string()` without `libxml_disable_entity_loader()`
+* `DOMDocument::loadXML()` without `LIBXML_NONET`
+
+==== checkTOCTOU
+
+Detect time-of-check-time-of-use race conditions.
+
+[source,haskell]
+----
+checkTOCTOU :: Located Statement -> [SecurityIssue]
+----
+
+**Detects:**
+* Capability checks separated from privileged operations
+* File existence checks followed by file operations
+
+==== checkTimingAttack
+
+Detect timing attack vulnerabilities.
+
+[source,haskell]
+----
+checkTimingAttack :: Located Statement -> [SecurityIssue]
+----
+
+**Detects:**
+* String comparisons using `==` or `===` for secrets
+* Custom password verification without constant-time comparison
+
+==== checkObjectInjection
+
+Detect object injection via unsafe deserialization.
+
+[source,haskell]
+----
+checkObjectInjection :: Located Expr -> [SecurityIssue]
+----
+
+**Detects:**
+* `unserialize()` with user input
+* `unserialize()` without `allowed_classes` restriction
+
+== Module: Sanctify.WordPress.Security
+
+WordPress-specific security checks.
+
+=== Types
+
+==== WordPressIssue
+
+WordPress-specific security issue.
+
+[source,haskell]
+----
+data WordPressIssue = WordPressIssue
+    { wpIssueType :: WPIssueType
+    , wpIssueSeverity :: Severity
+    , wpIssueLocation :: SourcePos
+    , wpIssueDescription :: Text
+    , wpIssueSuggestion :: Text
+    , wpIssueCodeExample :: Maybe Text
+    } deriving (Show, Eq, Generic, ToJSON, FromJSON)
+----
+
+==== WPIssueType
+
+Types of WordPress-specific issues.
+
+[source,haskell]
+----
+data WPIssueType
+    = MissingNonce         -- Missing nonce verification
+    | MissingCapability    -- Missing capability check
+    | UnsafeAJAX           -- Unsafe AJAX handler
+    | UnsafeRESTAPI        -- Unsafe REST API endpoint
+    | UnsafeFileUpload     -- Unsafe file upload handling
+    | UnsafeSanitization   -- Missing input sanitization
+    | UnsafeEscaping       -- Missing output escaping
+    | InsecureTransient    -- Unsafe transient usage
+    | InsecureCron         -- Unsafe cron job
+    | InsecureBlock        -- Unsafe Gutenberg block
+    | InsecureI18n         -- Unsafe i18n function usage
+    deriving (Show, Eq, Generic, ToJSON, FromJSON)
+----
+
+=== Functions
+
+==== analyzeWordPressSecurity
+
+Main entry point for WordPress analysis.
+
+[source,haskell]
+----
+analyzeWordPressSecurity :: PhpFile -> [WordPressIssue]
+----
+
+==== checkMissingNonce
+
+Detect missing nonce verification.
+
+[source,haskell]
+----
+checkMissingNonce :: Located Statement -> [WordPressIssue]
+----
+
+**Detects:**
+* Form handlers without `wp_verify_nonce()`
+* AJAX handlers without `check_ajax_referer()`
+* State-changing operations without CSRF protection
+
+==== checkMissingCapability
+
+Detect missing capability checks.
+
+[source,haskell]
+----
+checkMissingCapability :: Located Statement -> [WordPressIssue]
+----
+
+**Detects:**
+* Admin operations without `current_user_can()`
+* Privileged actions without authorization
+* User role changes without permission checks
+
+==== checkUnsafeAJAX
+
+Detect unsafe AJAX handlers.
+
+[source,haskell]
+----
+checkUnsafeAJAX :: Located Statement -> [WordPressIssue]
+----
+
+**Detects:**
+* `wp_ajax_*` hooks without nonce verification
+* AJAX handlers without capability checks
+* Missing `wp_send_json_error()` on failure
+
+==== checkUnsafeRESTAPI
+
+Detect unsafe REST API endpoints.
+
+[source,haskell]
+----
+checkUnsafeRESTAPI :: Located Statement -> [WordPressIssue]
+----
+
+**Detects:**
+* `register_rest_route()` without `permission_callback`
+* `permission_callback` set to `__return_true`
+* Missing input validation on REST endpoints
+
+== Module: Sanctify.Transform
+
+Code transformation passes.
+
+=== Functions
+
+==== transformStrict
+
+Add `declare(strict_types=1)` to files.
+
+[source,haskell]
+----
+transformStrict :: PhpFile -> PhpFile
+----
+
+==== transformSanitizeOutput
+
+Wrap output with escaping functions.
+
+[source,haskell]
+----
+transformSanitizeOutput :: PhpFile -> PhpFile
+----
+
+**Wraps:**
+* `echo $_GET[...]` → `echo esc_html($_GET[...])`
+* Attribute context → `esc_attr()`
+* URL context → `esc_url()`
+
+==== transformSanitizeInput
+
+Wrap input with sanitization functions.
+
+[source,haskell]
+----
+transformSanitizeInput :: PhpFile -> PhpFile
+----
+
+**Wraps:**
+* `$_GET['text']` → `sanitize_text_field($_GET['text'])`
+* `$_POST['email']` → `sanitize_email($_POST['email'])`
+* `$_POST['int']` → `absint($_POST['int'])`
+
+==== transformSQLPrepare
+
+Wrap SQL queries with `$wpdb->prepare()`.
+
+[source,haskell]
+----
+transformSQLPrepare :: PhpFile -> PhpFile
+----
+
+**Transforms:**
+* `$wpdb->query("... $var")` → `$wpdb->query($wpdb->prepare("... %d", $var))`
+
+==== transformAddTypeHints
+
+Infer and add type hints.
+
+[source,haskell]
+----
+transformAddTypeHints :: PhpFile -> PhpFile
+----
+
+**Adds:**
+* Return type hints based on return statements
+* Parameter type hints based on usage
+* Property type hints based on assignments
+
+==== transformModernizeCrypto
+
+Replace weak cryptographic functions.
+
+[source,haskell]
+----
+transformModernizeCrypto :: PhpFile -> PhpFile
+----
+
+**Replaces:**
+* `rand()` → `random_int()`
+* `md5($password)` → `password_hash($password, PASSWORD_ARGON2ID)`
+* `sha1()` → `sodium_crypto_generichash()`
+
+link:../developer/EXTENDING.adoc[← Back to Extending Guide]
