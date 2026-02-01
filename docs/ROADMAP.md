@@ -185,7 +185,7 @@ sanctify-php-composer/
 ```php
 <?php
 declare(strict_types=1);
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PMPL-1.0-or-later
 
 namespace Sanctify\Composer;
 
@@ -762,5 +762,5 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ---
 
-*SPDX-License-Identifier: MIT OR AGPL-3.0-or-later*
+*SPDX-License-Identifier: PMPL-1.0-or-later
 *SPDX-FileCopyrightText: 2024-2025 hyperpolymath*

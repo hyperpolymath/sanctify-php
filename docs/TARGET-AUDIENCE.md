@@ -227,5 +227,5 @@ The tools complement each other best when:
 
 ---
 
-*SPDX-License-Identifier: MIT OR AGPL-3.0-or-later*
+*SPDX-License-Identifier: PMPL-1.0-or-later
 *SPDX-FileCopyrightText: 2024-2025 hyperpolymath*

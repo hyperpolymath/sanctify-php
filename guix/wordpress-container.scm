@@ -1,5 +1,5 @@
 ;;; Sanctify-PHP Hardened WordPress Container
-;;; SPDX-License-Identifier: AGPL-3.0-or-later
+;;; SPDX-License-Identifier: PMPL-1.0-or-later
 ;;;
 ;;; This Guix manifest provides infrastructure-level hardening that
 ;;; complements the code-level analysis from sanctify-php.

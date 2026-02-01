@@ -284,7 +284,7 @@ X-Bastion-Request-ID: uuid-for-provenance
 ```php
 <?php
 declare(strict_types=1);
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PMPL-1.0-or-later
 
 namespace Aegis\IndieWeb;
 
@@ -469,5 +469,5 @@ See: hyperpolymath/sanctify-php/docs/INDIEWEB-COLLABORATION.md
 
 ---
 
-*SPDX-License-Identifier: MIT OR AGPL-3.0-or-later*
+*SPDX-License-Identifier: PMPL-1.0-or-later
 *SPDX-FileCopyrightText: 2024-2025 hyperpolymath*

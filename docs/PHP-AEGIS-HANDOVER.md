@@ -107,7 +107,7 @@ php-aegis (PHP 8.1+)           ← Modern API with enums, union types
 
 ```php
 <?php
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PMPL-1.0-or-later
 // php-aegis-compat/src/Escape.php
 
 namespace Aegis;
@@ -176,7 +176,7 @@ if (PHP_VERSION_ID >= 80100) {
 
 ```php
 <?php
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PMPL-1.0-or-later
 // php-aegis/src/WordPress/functions.php
 
 namespace Aegis\WordPress;
@@ -258,7 +258,7 @@ if (defined('ABSPATH')) {
 
 ```php
 <?php
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PMPL-1.0-or-later
 
 namespace Aegis;
 
@@ -346,7 +346,7 @@ Aegis\IndieWeb\Micropub::sanitizeContent($content, $context);
 ```php
 <?php
 declare(strict_types=1);
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PMPL-1.0-or-later
 
 namespace Aegis\Semantic;
 
@@ -409,7 +409,7 @@ final class Turtle
 ```php
 <?php
 declare(strict_types=1);
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PMPL-1.0-or-later
 // SPDX-FileCopyrightText: 2024-2025 hyperpolymath
 
 namespace Aegis;
@@ -424,7 +424,7 @@ namespace Aegis;
 ```php
 <?php
 declare(strict_types=1);
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PMPL-1.0-or-later
 
 namespace Aegis;
 
@@ -603,5 +603,5 @@ For questions about this handover or sanctify-php integration:
 
 ---
 
-*SPDX-License-Identifier: MIT OR AGPL-3.0-or-later*
+*SPDX-License-Identifier: PMPL-1.0-or-later
 *SPDX-FileCopyrightText: 2024-2025 hyperpolymath*
