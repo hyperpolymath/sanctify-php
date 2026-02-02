@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# RSR-template-repo - Editor Configuration
 # https://editorconfig.org
 
 root = true
@@ -20,6 +20,12 @@ trim_trailing_whitespace = false
 [*.rs]
 indent_size = 4
 
+[*.ex]
+indent_size = 2
+
+[*.exs]
+indent_size = 2
+
 [*.zig]
 indent_size = 4
 
@@ -32,12 +38,6 @@ indent_size = 3
 [*.ads]
 indent_size = 3
 
-[*.ex]
-indent_size = 2
-
-[*.exs]
-indent_size = 2
-
 [*.hs]
 indent_size = 2
 
@@ -48,6 +48,9 @@ indent_size = 2
 indent_size = 2
 
 [*.ncl]
+indent_size = 2
+
+[*.rkt]
 indent_size = 2
 
 [*.scm]
@@ -63,6 +66,3 @@ indent_size = 4
 [justfile]
 indent_style = space
 indent_size = 4
-
-[Makefile]
-indent_style = tab
