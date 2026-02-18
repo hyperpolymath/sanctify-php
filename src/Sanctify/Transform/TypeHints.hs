@@ -13,6 +13,7 @@ module Sanctify.Transform.TypeHints
 
       -- * Full file transformation
     , addAllTypeHints
+    , transformAddTypeHints
     ) where
 
 import Data.Text (Text)
