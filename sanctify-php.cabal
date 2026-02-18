@@ -12,7 +12,7 @@ description:
     * Multiple output formats (text, JSON, SARIF, HTML)
     * Interactive fix mode and watch mode for development
     * Infrastructure export (php.ini, nginx, Guix/Nix)
-license:            PMPL-1.0-or-later
+license:            LicenseRef-PMPL-1.0-or-later
 license-file:       LICENSE
 author:             Jonathan D.A. Jewell
 maintainer:         jonathan.jewell@gmail.com
@@ -50,7 +50,7 @@ library
         Sanctify.Parser.Lexer
         Sanctify.Parser.Token
     build-depends:
-        base ^>=4.17,
+        base >=4.17,
         text >=2.0,
         containers >=0.6,
         mtl >=2.3,
@@ -65,7 +65,8 @@ library
         vector >=0.13,
         unordered-containers >=0.2,
         prettyprinter >=1.7,
-        optparse-applicative >=0.18
+        optparse-applicative >=0.18,
+        time >=1.12
     hs-source-dirs:   src
     default-language: GHC2021
     default-extensions:
@@ -79,7 +80,7 @@ executable sanctify
     import:           warnings
     main-is:          Main.hs
     build-depends:
-        base ^>=4.17,
+        base >=4.17,
         sanctify-php,
         text,
         containers,
@@ -109,7 +110,7 @@ test-suite sanctify-php-test
         SecuritySpec
         TransformSpec
     build-depends:
-        base ^>=4.17,
+        base >=4.17,
         sanctify-php,
         hspec >=2.10,
         hspec-discover >=2.10,

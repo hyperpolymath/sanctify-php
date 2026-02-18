@@ -23,6 +23,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Control.Monad (forM_, unless, when)
 import Control.Monad.Writer
 import GHC.Generics (Generic)
 import Data.Aeson (ToJSON)
@@ -327,23 +328,7 @@ checkXssOutput pos expr =
 
 -- | Check for hardcoded secrets in strings
 checkHardcodedSecrets :: SourcePos -> Text -> SecurityM ()
-checkHardcodedSecrets pos str = do
-    let lower = T.toLower str
-
-    -- Check for API keys, passwords, secrets
-    when (any (`T.isInfixOf` lower)
-            ["api_key", "apikey", "api-key", "password", "passwd",
-             "secret", "private_key", "privatekey", "access_token",
-             "auth_token", "bearer"]) $
-        when (T.length str > 10) $  -- Avoid false positives on short strings
-            tell [SecurityIssue
-                { issueType = HardcodedSecret
-                , issueSeverity = High
-                , issueLocation = pos
-                , issueDescription = "Possible hardcoded secret detected"
-                , issueRemedy = "Use environment variables or secure configuration"
-                , issueCode = Just (T.take 20 str <> "...")
-                }]
+checkHardcodedSecrets pos str = tell (checkSecretPatterns pos str)
 
 -- | Check if expression contains user input (superglobals, etc.)
 containsUserInput :: Located Expr -> Bool
@@ -517,66 +502,59 @@ checkWeakCrypto (Located pos expr) = case expr of
             | otherwise = "Use modern cryptographic primitives"
     _ -> Nothing
 
--- | Standalone check for hardcoded secrets
-checkHardcodedSecrets :: Located Expr -> [SecurityIssue]
-checkHardcodedSecrets (Located pos expr) = case expr of
-    ExprLiteral (LitString str) -> checkSecretPatterns pos str
-    ExprAssign _ (Located _ (ExprLiteral (LitString str))) -> checkSecretPatterns pos str
-    _ -> []
-  where
-    checkSecretPatterns :: SourcePos -> Text -> [SecurityIssue]
-    checkSecretPatterns p str
-        | T.length str < 8 = []  -- Too short to be a real secret
-        | otherwise = catMaybes
-            [ checkApiKey p str
-            , checkPassword p str
-            , checkPrivateKey p str
-            , checkToken p str
-            ]
+checkSecretPatterns :: SourcePos -> Text -> [SecurityIssue]
+checkSecretPatterns p str
+    | T.length str < 8 = []
+    | otherwise = catMaybes
+        [ checkApiKey p str
+        , checkPassword p str
+        , checkPrivateKey p str
+        , checkToken p str
+        ]
 
-    checkApiKey :: SourcePos -> Text -> Maybe SecurityIssue
-    checkApiKey p str
-        | any (`T.isInfixOf` T.toLower str) ["api_key", "apikey", "api-key"] =
-            Just $ SecurityIssue HardcodedSecret High p
-                "Possible hardcoded API key"
-                "Use environment variables: getenv('API_KEY')"
-                (Just $ T.take 15 str <> "...")
-        | otherwise = Nothing
+checkApiKey :: SourcePos -> Text -> Maybe SecurityIssue
+checkApiKey p str
+    | any (`T.isInfixOf` T.toLower str) ["api_key", "apikey", "api-key"] =
+        Just $ SecurityIssue HardcodedSecret High p
+            "Possible hardcoded API key"
+            "Use environment variables: getenv('API_KEY')"
+            (Just $ T.take 15 str <> "...")
+    | otherwise = Nothing
 
-    checkPassword :: SourcePos -> Text -> Maybe SecurityIssue
-    checkPassword p str
-        | any (`T.isInfixOf` T.toLower str) ["password", "passwd", "pwd"] =
-            Just $ SecurityIssue HardcodedSecret High p
-                "Possible hardcoded password"
-                "Use environment variables or secure vault"
-                (Just $ T.take 15 str <> "...")
-        | otherwise = Nothing
+checkPassword :: SourcePos -> Text -> Maybe SecurityIssue
+checkPassword p str
+    | any (`T.isInfixOf` T.toLower str) ["password", "passwd", "pwd"] =
+        Just $ SecurityIssue HardcodedSecret High p
+            "Possible hardcoded password"
+            "Use environment variables or secure vault"
+            (Just $ T.take 15 str <> "...")
+    | otherwise = Nothing
 
-    checkPrivateKey :: SourcePos -> Text -> Maybe SecurityIssue
-    checkPrivateKey p str
-        | any (`T.isInfixOf` T.toLower str) ["private_key", "privatekey", "secret_key", "secretkey"] =
-            Just $ SecurityIssue HardcodedSecret Critical p
-                "Possible hardcoded private key"
-                "Store keys in secure key management system"
-                (Just $ T.take 15 str <> "...")
-        | "-----BEGIN" `T.isInfixOf` str =
-            Just $ SecurityIssue HardcodedSecret Critical p
-                "PEM-encoded key detected in source"
-                "Never embed cryptographic keys in source code"
-                (Just "-----BEGIN...")
-        | otherwise = Nothing
+checkPrivateKey :: SourcePos -> Text -> Maybe SecurityIssue
+checkPrivateKey p str
+    | any (`T.isInfixOf` T.toLower str) ["private_key", "privatekey", "secret_key", "secretkey"] =
+        Just $ SecurityIssue HardcodedSecret Critical p
+            "Possible hardcoded private key"
+            "Store keys in secure key management system"
+            (Just $ T.take 15 str <> "...")
+    | "-----BEGIN" `T.isInfixOf` str =
+        Just $ SecurityIssue HardcodedSecret Critical p
+            "PEM-encoded key detected in source"
+            "Never embed cryptographic keys in source code"
+            (Just "-----BEGIN...")
+    | otherwise = Nothing
 
-    checkToken :: SourcePos -> Text -> Maybe SecurityIssue
-    checkToken p str
-        | any (`T.isInfixOf` T.toLower str) ["access_token", "auth_token", "bearer", "jwt"] =
-            Just $ SecurityIssue HardcodedSecret High p
-                "Possible hardcoded authentication token"
-                "Use secure token storage, never commit tokens"
-                (Just $ T.take 15 str <> "...")
-        | otherwise = Nothing
+checkToken :: SourcePos -> Text -> Maybe SecurityIssue
+checkToken p str
+    | any (`T.isInfixOf` T.toLower str) ["access_token", "auth_token", "bearer", "jwt"] =
+        Just $ SecurityIssue HardcodedSecret High p
+            "Possible hardcoded authentication token"
+            "Use secure token storage, never commit tokens"
+            (Just $ T.take 15 str <> "...")
+    | otherwise = Nothing
 
-    catMaybes :: [Maybe a] -> [a]
-    catMaybes = foldr (\mx acc -> maybe acc (:acc) mx) []
+catMaybes :: [Maybe a] -> [a]
+catMaybes = foldr (\mx acc -> maybe acc (:acc) mx) []
 
 -- | Standalone check for dangerous functions
 checkDangerousFunctions :: Located Expr -> [SecurityIssue]

@@ -8,9 +8,10 @@ import System.IO (hFlush, stdout, hPutStrLn, stderr)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import qualified Data.ByteString.Lazy.Char8 as BL8
 import System.Directory (doesFileExist, doesDirectoryExist, listDirectory, getModificationTime)
 import System.FilePath ((</>), takeExtension)
-import Control.Monad (forM, filterM, when, unless, forever)
+import Control.Monad (forM, forM_, filterM, when, unless, forever)
 import Control.Concurrent (threadDelay)
 import Data.Either (partitionEithers)
 import Data.List (isPrefixOf, isSuffixOf)
@@ -21,14 +22,14 @@ import qualified Data.Map.Strict as Map
 import Sanctify.Parser
 import Sanctify.AST
 import Sanctify.Analysis.Security
-import Sanctify.Analysis.Types
+import Sanctify.Analysis.Types (emptyTypeContext)
 import Sanctify.WordPress.Constraints
 import Sanctify.Transform.StrictTypes
 import Sanctify.Transform.Sanitize
 import Sanctify.Transform.TypeHints
-import Sanctify.Emit
+import Sanctify.Emit (emitPhp, emitPhpIniRecommendations, emitNginxRules, emitGuixOverrides)
 import Sanctify.Config
-import Sanctify.Report
+import qualified Sanctify.Report as SReport
 
 -- | CLI options
 data Options = Options
@@ -490,7 +491,7 @@ fixCommand path = fixOnce (Options (Fix path) False False FormatText [] [] False
 applyTransforms :: PhpFile -> PhpFile
 applyTransforms = addStrictTypes . addAbspathCheck . addTypeHintsFile
   where
-    addTypeHintsFile file = addAllTypeHints emptyContext file
+    addTypeHintsFile file = addAllTypeHints emptyTypeContext file
 
 -- | Enhanced report command with multiple output formats
 reportCommandNew :: Options -> FilePath -> IO ()
@@ -503,7 +504,7 @@ reportCommandNew opts path = do
     fileReports <- forM files $ \file -> do
         content <- TIO.readFile file
         case parsePhpString file content of
-            Left _ -> pure $ generateFileReport file [] [] 0 0 False
+            Left _ -> pure $ SReport.generateFileReport file [] [] 0 0 False
             Right ast -> do
                 let secIssues = filterIssues opts $ analyzeSecurityIssues ast
                 let wpIssues = if isWordPressCode ast
@@ -511,21 +512,21 @@ reportCommandNew opts path = do
                                else []
                 let autoFixed = length $ filter (canAutoFix . issueType) secIssues
                 let manual = length secIssues - autoFixed
-                pure $ generateFileReport file secIssues wpIssues autoFixed manual False
+                pure $ SReport.generateFileReport file secIssues wpIssues autoFixed manual False
 
     case optFormat opts of
         FormatText -> do
-            report <- generateReport defaultConfig fileReports
-            TIO.putStrLn $ renderText report
+            report <- SReport.generateReport defaultConfig fileReports
+            TIO.putStrLn $ SReport.renderText report
         FormatJSON -> do
-            report <- generateReport defaultConfig fileReports
-            TIO.putStrLn $ renderJSON report
+            report <- SReport.generateReport defaultConfig fileReports
+            BL8.putStrLn $ SReport.renderJson report
         FormatSARIF -> do
-            report <- generateReport defaultConfig fileReports
-            TIO.putStrLn $ renderSARIF report
+            report <- SReport.generateReport defaultConfig fileReports
+            BL8.putStrLn $ SReport.renderSarif report
         FormatHTML -> do
-            report <- generateReport defaultConfig fileReports
-            TIO.putStrLn $ renderHTML report
+            report <- SReport.generateReport defaultConfig fileReports
+            TIO.putStrLn $ SReport.renderHtml report
   where
     canAutoFix :: IssueType -> Bool
     canAutoFix MissingStrictTypes = True

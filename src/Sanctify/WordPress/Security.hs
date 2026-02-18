@@ -28,6 +28,7 @@ module Sanctify.WordPress.Security
 
 import Data.Text (Text)
 import qualified Data.Text as T
+import Control.Monad (unless, when)
 import Control.Monad.Writer
 import GHC.Generics (Generic)
 import Data.Aeson (ToJSON)
@@ -338,7 +339,7 @@ checkCronSecurity (Located pos expr) = case expr of
                 "Cron event with user-controlled parameters"
                 "Validate and sanitize cron arguments"
                 (Just fname)]
-      where fname = T.toLower $ unName $ last $ qnPaths qn
+      where fname = T.toLower $ unName $ last $ qnParts qn
     _ -> []
 
 -- | Check shortcode security
@@ -355,10 +356,10 @@ checkShortcodeSecurity (Located pos expr) = case expr of
 
 -- | Check widget security
 checkWidgetSecurity :: Located Declaration -> [WordPressIssue]
-checkWidgetSecurity decl = case decl of
+checkWidgetSecurity (Located pos decl) = case decl of
     DeclClass{clsName = Name className}
         | "Widget" `T.isInfixOf` className ->
-            [WordPressIssue WidgetXSS Medium (SourcePos "<unknown>" 0 0)
+            [WordPressIssue WidgetXSS Medium pos
                 "Widget class - verify form() and update() escape output"
                 "Escape all widget output and sanitize widget settings"
                 (Just className)]

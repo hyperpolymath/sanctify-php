@@ -46,7 +46,7 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Aeson
+import Data.Aeson (ToJSON, FromJSON, ToJSONKey, FromJSONKey, Value, encode, eitherDecodeStrict')
 import qualified Data.ByteString.Lazy as BL
 import GHC.Generics (Generic)
 import Data.Maybe (fromMaybe)
@@ -78,7 +78,7 @@ data RuleCategory
     | CategoryStyle         -- ^ Code style
     | CategoryMaintenance   -- ^ Maintainability
     deriving stock (Eq, Ord, Show, Generic, Enum, Bounded)
-    deriving anyclass (ToJSON, FromJSON)
+    deriving anyclass (ToJSON, FromJSON, ToJSONKey, FromJSONKey)
 
 -- | Configuration for a single rule
 data RuleConfig = RuleConfig

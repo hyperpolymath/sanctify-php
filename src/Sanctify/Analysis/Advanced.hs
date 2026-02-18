@@ -8,7 +8,6 @@ module Sanctify.Analysis.Advanced
     , checkXXE
     , checkTOCTOU
     , checkMassAssignment
-    , checkInsecureDeserialization
     , checkPrototypePollution
     , checkOpenRedirect
 
@@ -34,6 +33,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Control.Monad (when)
 import Control.Monad.Writer
 import GHC.Generics (Generic)
 import Data.Aeson (ToJSON)
@@ -110,7 +110,7 @@ checkSSRF :: Located Expr -> [AdvancedIssue]
 checkSSRF (Located pos expr) = case expr of
     ExprCall (Located _ (ExprConstant qn)) args
         | fname `elem` ssrfFunctions
-        , any containsUserInput args ->
+        , any (containsUserInput . argValue) args ->
             [AdvancedIssue SSRF High pos
                 ("SSRF vulnerability in " <> fname <> ": user controls URL")
                 "Validate URLs against whitelist, use URL parsing to check scheme/host"
@@ -143,8 +143,10 @@ checkSSRF (Located pos expr) = case expr of
 checkXXE :: Located Expr -> [AdvancedIssue]
 checkXXE (Located pos expr) = case expr of
     ExprCall (Located _ (ExprConstant qn)) args
-        | fname `elem` ["simplexml_load_string", "simplexml_load_file", "SimpleXMLElement"]
-        , not (hasLibxmlDisableEntityLoader args) ->
+        | let fname = T.toLower $ unName $ last $ qnParts qn
+        , fname `elem` ["simplexml_load_string", "simplexml_load_file", "SimpleXMLElement"]
+        , not (hasLibxmlDisableEntityLoader args)
+        , any (exprContainsUserInput . argValue) args ->
             [AdvancedIssue XXE Critical pos
                 ("XXE vulnerability: " <> fname <> " without entity loader disabled")
                 "Call libxml_disable_entity_loader(true) before parsing XML"
@@ -164,6 +166,14 @@ checkXXE (Located pos expr) = case expr of
   where
     hasLibxmlDisableEntityLoader :: [Argument] -> Bool
     hasLibxmlDisableEntityLoader _args = False  -- TODO: check for LIBXML_NOENT option
+
+    exprContainsUserInput :: Located Expr -> Bool
+    exprContainsUserInput (Located _ e) = case e of
+        ExprVariable (Variable name) ->
+            name `elem` ["_GET", "_POST", "_REQUEST", "_COOKIE", "_SERVER"]
+        ExprArrayAccess base _ -> exprContainsUserInput base
+        ExprBinary OpConcat left right -> exprContainsUserInput left || exprContainsUserInput right
+        _ -> False
 
 -- | Check for Time-of-Check-Time-of-Use (TOCTOU) race conditions
 checkTOCTOU :: [Located Statement] -> [AdvancedIssue]
