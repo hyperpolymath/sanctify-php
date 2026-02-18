@@ -19,6 +19,11 @@ module Sanctify.Transform.Sanitize
     , sanitizeSuperglobalAccess
     , escapeEchoStatement
     , addExitAfterRedirect
+    , transformSanitizeOutput
+    , transformSanitizeInput
+    , transformSQLPrepare
+    , transformRedirectSafety
+    , transformModernizeCrypto
     ) where
 
 import Data.Text (Text)

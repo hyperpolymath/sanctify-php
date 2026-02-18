@@ -14,10 +14,12 @@ module Sanctify.Analysis.DeadCode
 
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.List (foldl')
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Control.Monad (forM_, mapM_, unless, when)
 import Control.Monad.State.Strict
 import GHC.Generics (Generic)
 import Data.Aeson (ToJSON)

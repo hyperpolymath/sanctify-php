@@ -19,11 +19,13 @@ module Sanctify.Parser
 
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Maybe (isNothing)
 import Data.Void (Void)
-import Text.Megaparsec
+import Text.Megaparsec hiding (ParseError, SourcePos)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Control.Monad (void, when)
+import qualified Text.Megaparsec.Pos as MPPos
+import Control.Monad (void, when, unless, forM_, mapM_)
 import Control.Monad.Combinators.Expr
 
 import Sanctify.AST
@@ -178,13 +180,13 @@ statementP = do
     pos <- getSourcePos
     let loc = toSourcePos pos
     stmt <- choice
-        [ StmtIf <$> ifP
-        , StmtWhile <$> whileP
-        , StmtFor <$> forP
-        , StmtForeach <$> foreachP
-        , StmtSwitch <$> switchP
-        , StmtMatch <$> matchP
-        , StmtTry <$> tryP
+        [ (\(cond, thenStmts, elseStmts) -> StmtIf cond thenStmts elseStmts) <$> ifP
+        , (\(cond, body) -> StmtWhile cond body) <$> whileP
+        , (\(initial, cond, update, body) -> StmtFor initial cond update body) <$> forP
+        , (\(expr, value, key, body) -> StmtForeach expr value key body) <$> foreachP
+        , (\(expr, cases) -> StmtSwitch expr cases) <$> switchP
+        , (\(expr, arms) -> StmtMatch expr arms) <$> matchP
+        , (\(body, catches, finallyBlock) -> StmtTry body catches finallyBlock) <$> tryP
         , StmtReturn <$> returnP
         , StmtThrow <$> throwP
         , StmtBreak <$> breakP
@@ -193,7 +195,7 @@ statementP = do
         , StmtGlobal <$> globalP
         , StmtStatic <$> staticP
         , StmtUnset <$> unsetP
-        , StmtDeclare <$> declareP
+        , (\(dirs, body) -> StmtDeclare dirs body) <$> declareP
         , StmtDecl <$> declarationP
         , exprStmtP
         ]
@@ -333,10 +335,7 @@ statementP = do
     declareP = do
         reserved "declare"
         directives <- parens (commaSep directiveP)
-        body <- choice
-            [ braces (many statementP)
-            , pure [] <$ semi  -- Empty body with just semicolon
-            ]
+        body <- braces (many statementP) <|> (semi >> pure ([] :: [Located Statement]))  -- Empty body with just semicolon
         pure (directives, body)
       where
         directiveP = do
@@ -351,9 +350,6 @@ statementP = do
         pure $ StmtExpr e
 
 -- | Pattern match helpers for statement construction
-instance {-# OVERLAPPING #-} Functor ((,,) a b) where
-    fmap f (a, b, c) = (a, b, f c)
-
 -- | Parse declaration
 declarationP :: Parser Declaration
 declarationP = choice
@@ -625,10 +621,16 @@ exprP = do
     pos <- getSourcePos
     let loc = toSourcePos pos
     expr <- makeExprParser termP operatorTable
-    pure $ Located loc expr
+    pure $ Located loc (locNode expr)
+
+dummyPos :: SourcePos
+dummyPos = SourcePos "" 0 0
+
+locWithDummy :: Expr -> Located Expr
+locWithDummy = Located dummyPos
 
 -- | Operator table for expression parser
-operatorTable :: [[Operator Parser Expr]]
+operatorTable :: [[Operator Parser (Located Expr)]]
 operatorTable =
     [ [ prefix "!" (ExprUnary OpNot)
       , prefix "-" (ExprUnary OpNeg)
@@ -665,20 +667,20 @@ operatorTable =
     , [ infixL "||" (ExprBinary OpOr) ]
     , [ Postfix ternaryP ]  -- Ternary operator: expr ? expr : expr
     , [ infixR "??" (ExprBinary OpCoalesce) ]
-    , [ infixR "??=" (\l r -> ExprAssignOp OpCoalesce (wrapLoc l) (wrapLoc r))  -- PHP 7.4
-      , infixR "+=" (\l r -> ExprAssignOp OpAdd (wrapLoc l) (wrapLoc r))
-      , infixR "-=" (\l r -> ExprAssignOp OpSub (wrapLoc l) (wrapLoc r))
-      , infixR "*=" (\l r -> ExprAssignOp OpMul (wrapLoc l) (wrapLoc r))
-      , infixR "/=" (\l r -> ExprAssignOp OpDiv (wrapLoc l) (wrapLoc r))
-      , infixR ".=" (\l r -> ExprAssignOp OpConcat (wrapLoc l) (wrapLoc r))
+    , [ infixR "??=" (\l r -> ExprAssignOp OpCoalesce l r)  -- PHP 7.4
+      , infixR "+=" (\l r -> ExprAssignOp OpAdd l r)
+      , infixR "-=" (\l r -> ExprAssignOp OpSub l r)
+      , infixR "*=" (\l r -> ExprAssignOp OpMul l r)
+      , infixR "/=" (\l r -> ExprAssignOp OpDiv l r)
+      , infixR ".=" (\l r -> ExprAssignOp OpConcat l r)
       , infixR "=" ExprAssign
       ]
     ]
   where
-    prefix name f = Prefix (f . wrapLoc <$ symbol name)
-    infixL name f = InfixL ((\l r -> f (wrapLoc l) (wrapLoc r)) <$ symbol name)
-    infixR name f = InfixR ((\l r -> f (wrapLoc l) (wrapLoc r)) <$ symbol name)
-    infixN name f = InfixN ((\l r -> f (wrapLoc l) (wrapLoc r)) <$ symbol name)
+    prefix name f = Prefix ((\e -> locWithDummy (f e)) <$ symbol name)
+    infixL name f = InfixL ((\l r -> locWithDummy (f l r)) <$ symbol name)
+    infixR name f = InfixR ((\l r -> locWithDummy (f l r)) <$ symbol name)
+    infixN name f = InfixN ((\l r -> locWithDummy (f l r)) <$ symbol name)
 
     -- Ternary operator: cond ? then : else or cond ?: else (elvis)
     ternaryP = do
@@ -686,28 +688,25 @@ operatorTable =
         thenExpr <- optional exprP  -- Elvis operator allows omitting middle
         _ <- symbol ":"
         elseExpr <- exprP
-        pure $ \cond -> ExprTernary (wrapLoc cond) (fmap wrapLoc thenExpr) (wrapLoc $ locNode elseExpr)
-
-    wrapLoc :: Expr -> Located Expr
-    wrapLoc e = Located (SourcePos "" 0 0) e
+        pure $ \cond -> locWithDummy (ExprTernary cond thenExpr elseExpr)
 
 -- | Parse a term (base expression)
-termP :: Parser Expr
+termP :: Parser (Located Expr)
 termP = do
     base <- choice
-        [ ExprLiteral <$> literalP
-        , ExprVariable <$> variableP
+        [ locWithDummy . ExprLiteral <$> literalP
+        , locWithDummy . ExprVariable <$> variableP
         , try newP
         , try callP
         , try arrowFunctionP
         , try closureP
-        , ExprConstant <$> qualifiedNameP
-        , parens (locNode <$> exprP)
+        , locWithDummy . ExprConstant <$> qualifiedNameP
+        , parens exprP
         ]
     postfixP base
   where
     -- Handle postfix operations: method calls, property access, array access
-    postfixP :: Expr -> Parser Expr
+    postfixP :: Located Expr -> Parser (Located Expr)
     postfixP base = do
         ops <- many postfixOpP
         pure $ foldl applyPostfix base ops
@@ -721,13 +720,11 @@ termP = do
         ]
 
     applyPostfix base op = case op of
-        MethodCall name args -> ExprMethodCall (wrapLoc base) name args
-        NullsafeMethodCall name args -> ExprNullsafeMethodCall (wrapLoc base) name args
-        PropertyAccess name -> ExprPropertyAccess (wrapLoc base) name
-        NullsafePropertyAccess name -> ExprNullsafePropertyAccess (wrapLoc base) name
-        ArrayAccess idx -> ExprArrayAccess (wrapLoc base) idx
-
-    wrapLoc e = Located (SourcePos "" 0 0) e
+        MethodCall name args -> locWithDummy $ ExprMethodCall base name args
+        NullsafeMethodCall name args -> locWithDummy $ ExprNullsafeMethodCall base name args
+        PropertyAccess name -> locWithDummy $ ExprPropertyAccess base name
+        NullsafePropertyAccess name -> locWithDummy $ ExprNullsafePropertyAccess base name
+        ArrayAccess idx -> locWithDummy $ ExprArrayAccess base idx
 
 -- | Postfix operation types
 data PostfixOp
@@ -738,36 +735,36 @@ data PostfixOp
     | ArrayAccess (Maybe (Located Expr))
 
 -- | Parse new expression
-newP :: Parser Expr
+newP :: Parser (Located Expr)
 newP = do
     reserved "new"
     className <- qualifiedNameP
     args <- option [] (parens (commaSep argumentP))
-    pure $ ExprNew className args
+    pure $ locWithDummy $ ExprNew className args
 
 -- | Parse function call
-callP :: Parser Expr
+callP :: Parser (Located Expr)
 callP = do
     name <- qualifiedNameP
     args <- parens (commaSep argumentP)
-    pure $ ExprCall (Located (SourcePos "" 0 0) (ExprConstant name)) args
+    pure $ locWithDummy $ ExprCall (locWithDummy $ ExprConstant name) args
 
 -- | Parse arrow function (PHP 7.4+)
-arrowFunctionP :: Parser Expr
+arrowFunctionP :: Parser (Located Expr)
 arrowFunctionP = do
     reserved "fn"
     params <- parens (commaSep parameterP)
     ret <- optional returnTypeP
     _ <- symbol "=>"
     expr <- exprP
-    pure ExprArrowFunction
+    pure $ locWithDummy ExprArrowFunction
         { arrowParams = params
         , arrowReturn = ret
         , arrowExpr = expr
         }
 
 -- | Parse closure
-closureP :: Parser Expr
+closureP :: Parser (Located Expr)
 closureP = do
     static <- option False (True <$ reserved "static")
     reserved "function"
@@ -775,7 +772,7 @@ closureP = do
     uses <- option [] (reserved "use" *> parens (commaSep useVarP))
     ret <- optional returnTypeP
     body <- braces (many statementP)
-    pure ExprClosure
+    pure $ locWithDummy ExprClosure
         { closureStatic = static
         , closureParams = params
         , closureUses = uses
@@ -840,7 +837,7 @@ arrayP = brackets (commaSep arrayItemP) <|> (reserved "array" *> parens (commaSe
                 pure (key, value)
 
 -- | Convert Megaparsec source position to our SourcePos
-toSourcePos :: SourcePos -> Sanctify.AST.SourcePos
+toSourcePos :: MPPos.SourcePos -> Sanctify.AST.SourcePos
 toSourcePos pos = Sanctify.AST.SourcePos
     { posFile = sourceName pos
     , posLine = unPos (sourceLine pos)
