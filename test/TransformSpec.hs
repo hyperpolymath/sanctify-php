@@ -10,7 +10,7 @@ import Sanctify.AST
 import Sanctify.Emit
 import Sanctify.Transform.Sanitize
 import Sanctify.Transform.Strict
-import Sanctify.Transform.TypeHints
+import Sanctify.Transform.TypeHints (transformAddTypeHints)
 
 spec :: Spec
 spec = do

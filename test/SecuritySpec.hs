@@ -9,6 +9,7 @@ import Sanctify.Parser
 import Sanctify.Analysis.Security
 import Sanctify.Analysis.Advanced
 import Sanctify.WordPress.Security
+import Sanctify.AST (Located)
 
 spec :: Spec
 spec = do

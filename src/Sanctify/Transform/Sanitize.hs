@@ -30,6 +30,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 
 import Sanctify.AST
+import Sanctify.WordPress.Constraints (isWpdbObject)
 
 -- | Context for output escaping
 data EscapeContext
@@ -255,16 +256,16 @@ transformModernizeCrypto file = file { phpStatements = map (mapStatement moderni
 
     modernizeNode loc@(Located pos expr@(ExprCall callee args)) =
         case functionName callee of
-            Just fn | fn == "rand" -> Located pos $ ExprCall (makeConst "random_int") (map updateArg args)
-                    | fn == "md5" -> Located pos $ ExprCall (makeConst "hash") (Argument Nothing (Located pos $ ExprLiteral $ LitString "sha3-256") False : map updateArg args)
-                    | fn == "sha1" -> Located pos $ ExprCall (makeConst "sodium_crypto_generichash") (map updateArg args)
+            Just fn | fn == "rand" -> Located pos $ ExprCall (makeConst pos "random_int") (map updateArg args)
+                    | fn == "md5" -> Located pos $ ExprCall (makeConst pos "hash") (Argument Nothing (Located pos $ ExprLiteral $ LitString "sha3-256") False : map updateArg args)
+                    | fn == "sha1" -> Located pos $ ExprCall (makeConst pos "sodium_crypto_generichash") (map updateArg args)
             _ -> loc
 
     modernizeNode loc = loc
 
     updateArg (Argument name value unpack) = Argument name (modernizeExpr value) unpack
 
-    makeConst name = Located pos $ ExprConstant $ QualifiedName [Name name] False
+    makeConst p name = Located p $ ExprConstant $ QualifiedName [Name name] False
 
     functionName (Located _ (ExprConstant (QualifiedName parts _))) = Just $ unName $ last parts
     functionName _ = Nothing
@@ -324,7 +325,7 @@ mapStatement f (Located pos stmt) = Located pos (case stmt of
     StmtContinue n -> StmtContinue n
     StmtEcho exprs -> StmtEcho (map f exprs)
     StmtGlobal vars -> StmtGlobal vars
-    StmtStatic pairs -> StmtStatic (map (ib -> (fst fib, fmap f (snd fib))) pairs)
+    StmtStatic pairs -> StmtStatic (map (\(var, mexpr) -> (var, fmap f mexpr)) pairs)
     StmtUnset exprs -> StmtUnset (map f exprs)
     StmtDeclare decls body -> StmtDeclare decls (map (mapStatement f) body)
     StmtNoop -> StmtNoop)
