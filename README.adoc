@@ -152,3 +152,8 @@ PMPL-1.0-or-later
 * https://github.com/hyperpolymath/aegis[aegis] - Container orchestrator
 * https://github.com/hyperpolymath/wordpress-wharf[wordpress-wharf] - WordPress deployment
 * https://github.com/hyperpolymath/wp-audit-toolkit[wp-audit-toolkit] - WordPress auditing
+
+
+== Architecture
+
+See link:TOPOLOGY.md[TOPOLOGY.md] for a visual architecture map and completion dashboard.
