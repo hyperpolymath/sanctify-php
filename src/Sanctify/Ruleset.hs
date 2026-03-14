@@ -1,6 +1,6 @@
 -- | Ruleset management for sanctify-php
 -- Provides configurable rule collections for static analysis
--- SPDX-License-Identifier: AGPL-3.0-or-later
+-- SPDX-License-Identifier: PMPL-1.0-or-later
 module Sanctify.Ruleset
     ( -- * Core types
       Ruleset(..)

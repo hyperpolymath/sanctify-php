@@ -5,7 +5,7 @@
 -- allowing for the transformation of untrusted PHP code into safe, 
 //! verified alternatives.
 --
--- SPDX-License-Identifier: AGPL-3.0-or-later
+-- SPDX-License-Identifier: PMPL-1.0-or-later
 
 module Sanctify.Parser
     ( -- * Primary API: High-level parsing functions
