@@ -5,7 +5,7 @@ image:https://img.shields.io/badge/Philosophy-Palimpsest-indigo.svg[Palimpsest,l
 
 
 :author: Jonathan D.A. Jewell
-:email: jonathan.jewell@gmail.com
+:email: j.d.a.jewell@open.ac.uk
 :toc:
 :icons: font
 

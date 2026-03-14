@@ -208,7 +208,7 @@ See link:../LICENSE[LICENSE] for details.
 * **Issues**: https://github.com/hyperpolymath/sanctify-php/issues
 * **Documentation**: https://sanctify-php.hyperpolymath.dev
 * **Community**: #sanctify-php on Matrix
-* **Email**: jonathan.jewell@gmail.com
+* **Email**: j.d.a.jewell@open.ac.uk
 
 == Contributing
 

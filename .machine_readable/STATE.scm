@@ -56,7 +56,7 @@
              "LSP integration at 60% — in-editor highlighting active but incomplete"
              "WordPress plugin needs final admin UI hooks"))
     (low ("Cabal maintainer email uses gmail — should be j.d.a.jewell@open.ac.uk"
-          "Main.hs SPDX says AGPL-3.0 — stale, should be PMPL-1.0-or-later")))
+          "Main.hs SPDX updated to PMPL-1.0-or-later")))
 
   (critical-next-actions
     (immediate ("Run cabal build to verify compilation"
