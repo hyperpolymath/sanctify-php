@@ -328,7 +328,7 @@ Cache analysis results and only rescan changed files:
 
 ```haskell
 -- src/Sanctify/Cache.hs
--- SPDX-License-Identifier: AGPL-3.0-or-later
+-- SPDX-License-Identifier: PMPL-1.0-or-later
 
 module Sanctify.Cache
   ( AnalysisCache(..)
@@ -406,7 +406,7 @@ Add detection for semantic web output patterns:
 
 ```haskell
 -- src/Sanctify/Analysis/Semantic.hs
--- SPDX-License-Identifier: AGPL-3.0-or-later
+-- SPDX-License-Identifier: PMPL-1.0-or-later
 
 module Sanctify.Analysis.Semantic
   ( SemanticContext(..)

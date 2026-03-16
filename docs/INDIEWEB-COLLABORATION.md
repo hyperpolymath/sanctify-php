@@ -351,7 +351,7 @@ sanctify-php detects missing IndieWeb security patterns:
 
 ```haskell
 -- src/Sanctify/IndieWeb/Analysis.hs
--- SPDX-License-Identifier: AGPL-3.0-or-later
+-- SPDX-License-Identifier: PMPL-1.0-or-later
 
 module Sanctify.IndieWeb.Analysis
   ( detectIndieWebEndpoints
