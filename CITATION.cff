@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: PMPL-1.0-or-later
 cff-version: 1.2.0
 title: sanctify-php
 message: "If you use this software, please cite it as below."
@@ -20,6 +20,6 @@ keywords:
   - haskell
   - taint-tracking
   - wordpress
-license: AGPL-3.0-or-later
+license: PMPL-1.0-or-later
 version: "0.1.0"
 date-released: "2025-01-03"
