@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Clade declaration — part of the gv-clade-index registry
+# See: https://github.com/hyperpolymath/gv-clade-index
+
+[identity]
+uuid = "29f21f71-597f-51ed-802b-1ee06ac3d093"
+primary-forge = "github"
+primary-owner = "hyperpolymath"
+canonical-name = "sanctify-php"
+prefixed-name = "sc-sanctify-php"
+
+[clade]
+primary = "sc"
+secondary = ["dx"]
+assigned = "2026-03-16"
+rationale = ""
+
+[forges]
+github = "hyperpolymath/sanctify-php"
+gitlab = "hyperpolymath/sanctify-php"
+bitbucket = "hyperpolymath/sanctify-php"
+
+[lineage]
+type = "standalone"
+parent = "PHP security hardening"
+born = "2026-03-16"
