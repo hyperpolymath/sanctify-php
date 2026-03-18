@@ -18,7 +18,8 @@ on:
   release:
     types: [created]
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   build:
