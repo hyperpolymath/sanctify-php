@@ -3,20 +3,55 @@
 
 == Current Status
 
-Initial development phase.
+Substantial implementation exists, but trustworthiness still lags feature breadth.
+
+* Parser, emitter, CLI, WordPress-aware analysis, and transform modules are present.
+* The project is best treated as a research or beta security tool until the verification story catches up.
+* `TEST-NEEDS.md` and `PROOF-NEEDS.md` are currently more truthful than the old milestone boilerplate.
+
+== P0 Release Blockers
+
+* [ ] Reconcile contradictory status language across `ROADMAP.adoc`, `PROGRESS-SUMMARY.md`, `TOPOLOGY.md`, and the test/proof docs.
+* [ ] Add dedicated taint-analysis tests with meaningful source, sink, and sanitizer coverage.
+* [ ] Add dedicated dead-code-analysis tests instead of relying on fixture presence alone.
+* [ ] Add end-to-end tests that run the binary on real PHP inputs and validate emitted PHP.
+* [ ] Remove or replace `tests/fuzz/placeholder.txt` so the repo does not imply fuzz coverage it does not have.
+
+== P1 Trustworthiness Work
+
+* [ ] Define release criteria for a security-analysis tool:
+  - false-negative tracking
+  - representative corpus testing
+  - benchmark baselines
+  - proof obligations for taint and transform soundness
+* [ ] Expand security tests well beyond the current small set.
+* [ ] Add performance and large-codebase regression runs.
+* [ ] Add a single authoritative current-status document and mark older summaries as historical when needed.
+
+== P2 Productization
+
+* [ ] Finish CI/CD templates and release packaging.
+* [ ] Decide the smallest credible public promise for `v1.0.0`.
+* [ ] Position the tool as beta until the security-analysis core is demonstrably trustworthy.
 
 == Milestones
 
-=== v0.1.0 - Foundation
-* [ ] Core functionality
-* [ ] Basic documentation
-* [ ] CI/CD pipeline
+=== v0.2.x - Truthful Beta
+* [ ] Roadmap and status docs reconciled
+* [ ] Taint and dead-code tests expanded
+* [ ] Real end-to-end execution coverage
+* [ ] Placeholder fuzz artifact removed
+
+=== v0.3.x - Trustworthy Analyzer
+* [ ] Security corpus and benchmark runs in place
+* [ ] Release criteria documented
+* [ ] Stronger proof story for critical analyses
 
 === v1.0.0 - Stable Release
-* [ ] Full feature set
-* [ ] Comprehensive tests
-* [ ] Production ready
+* [ ] Claims match executed evidence
+* [ ] Security-analysis false-negative risk materially reduced
+* [ ] Production release posture justified by tests, proofs, and operator docs
 
 == Future Directions
 
-_To be determined based on community feedback._
+Use `php-aegis` and WordPress-targeted fixtures as real integration harnesses rather than broadening scope further before the trusted core is hardened.

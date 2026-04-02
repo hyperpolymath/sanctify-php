@@ -11,6 +11,14 @@ image:https://img.shields.io/badge/Philosophy-Palimpsest-indigo.svg[Palimpsest,l
 
 Haskell-based PHP hardening and security analysis tool.
 
+== Current Status
+
+Sanctify-PHP already contains substantial parser, analysis, transform, and reporting code, but it should still be treated as a research or beta security tool.
+
+* The implementation breadth is ahead of the verification depth.
+* The most important remaining gaps are taint-analysis tests, end-to-end execution coverage, and proof obligations for the security-analysis core.
+* Use link:ROADMAP.adoc[ROADMAP.adoc], link:TEST-NEEDS.md[TEST-NEEDS.md], and link:PROOF-NEEDS.md[PROOF-NEEDS.md] as the primary readiness documents.
+
 == Overview
 
 Sanctify-PHP transforms PHP code to be safer and more robust:
@@ -22,6 +30,11 @@ Sanctify-PHP transforms PHP code to be safer and more robust:
 * Performs taint tracking analysis
 * Generates reports in JSON/SARIF/HTML formats
 * Exports infrastructure recommendations (php.ini, nginx, Guix)
+
+[NOTE]
+====
+This README describes the intended capability surface of the tool. It should not be read as proof that every analysis and transform is already trustworthy enough for production security decisions.
+====
 
 == Installation
 
