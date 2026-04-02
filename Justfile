@@ -1,35 +1,44 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Justfile - hyperpolymath standard task runner
 
+set shell := ["bash", "-uc"]
+
 default:
     @just --list
 
 # Build the project
 build:
-    @echo "Building..."
+    @mkdir -p .cache/cabal .cache/xdg
+    CABAL_DIR=$PWD/.cache/cabal XDG_CACHE_HOME=$PWD/.cache/xdg cabal build all
 
 # Run tests
 test:
-    @echo "Testing..."
+    @mkdir -p .cache/cabal .cache/xdg
+    CABAL_DIR=$PWD/.cache/cabal XDG_CACHE_HOME=$PWD/.cache/xdg cabal test all --test-show-details=direct
 
 # Run lints
 lint:
-    @echo "Linting..."
+    @mkdir -p .cache/cabal .cache/xdg
+    CABAL_DIR=$PWD/.cache/cabal XDG_CACHE_HOME=$PWD/.cache/xdg cabal check
 
 # Clean build artifacts
 clean:
-    @echo "Cleaning..."
+    @mkdir -p .cache/cabal .cache/xdg
+    CABAL_DIR=$PWD/.cache/cabal XDG_CACHE_HOME=$PWD/.cache/xdg cabal clean
 
 # Format code
 fmt:
-    @echo "Formatting..."
+    @command -v ormolu >/dev/null 2>&1 && find src app test -name "*.hs" -print0 | xargs -0 ormolu -m inplace || echo "ormolu not installed — skipping format"
 
 # Run all checks
 check: lint test
 
 # Prepare a release
 release VERSION:
-    @echo "Releasing {{VERSION}}..."
+    @echo "Release {{VERSION}} checklist:"
+    @echo "  1. cabal sdist"
+    @echo "  2. cabal test all --test-show-details=direct"
+    @echo "  3. reconcile ROADMAP.adoc / PROGRESS-SUMMARY.md status"
 
 
 # Run panic-attacker pre-commit scan

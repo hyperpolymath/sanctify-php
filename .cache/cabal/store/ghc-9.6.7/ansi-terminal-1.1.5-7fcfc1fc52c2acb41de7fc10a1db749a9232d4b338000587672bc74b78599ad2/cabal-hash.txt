@@ -1,0 +1,12 @@
+pkgid: ansi-terminal-1.1.5
+component: ComponentLib
+src: 9cf083cef2e2ba88a425f132c8a82bfa931eb4b0c38232b2017f8fcea2e23073
+pkg-config-deps: 
+deps: ansi-terminal-types-1.1.3-461b0c93c3b2597d8da71e22b6229f021515b3504f7949bdaec63dcf424cf2c1, base-4.18.3.0, colour-2.3.7-d52569f7463117c978e36302ecf3f89281f76dd09c2220cec099f1910049dcd0
+compilerid: ghc-9.6.7
+compilerabi: 
+platform: x86_64-linux
+flags: -example
+shared-lib: True
+stripped-exe: False
+debug-info: 0
