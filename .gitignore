@@ -55,6 +55,7 @@ __pycache__/
 /.stack-work/
 /dist-newstyle/
 /cabal/
+.cache/
 
 # Chapel
 *.chpl.tmp.*
