@@ -109,6 +109,9 @@ test-suite sanctify-php-test
         ParserSpec
         SecuritySpec
         TransformSpec
+        E2ESpec
+        PropertySpec
+        AspectSpec
     build-depends:
         base >=4.17,
         sanctify-php,
@@ -116,9 +119,30 @@ test-suite sanctify-php-test
         hspec-discover >=2.10,
         hspec-megaparsec >=2.2,
         hspec-golden >=0.2,
+        QuickCheck >=2.14,
         text,
         containers,
         filepath,
-        directory
+        directory,
+        bytestring,
+        transformers
     build-tool-depends:
         hspec-discover:hspec-discover >=2.10
+
+benchmark sanctify-php-bench
+    default-language: GHC2021
+    default-extensions:
+        OverloadedStrings
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   bench
+    main-is:          Main.hs
+    build-depends:
+        base >=4.17,
+        sanctify-php,
+        criterion >=1.6,
+        text,
+        filepath
+    ghc-options:
+        -O2
+        -rtsopts
+        -with-rtsopts=-N
