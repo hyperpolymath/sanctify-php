@@ -1,23 +1,195 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 = Sanctify-PHP — Show Me The Receipts
 :toc:
+:toclevels: 3
 :icons: font
+:author: Jonathan D.A. Jewell
+:email: j.d.a.jewell@open.ac.uk
 
-The README makes claims. This file backs them up.
+The README makes claims. This file backs them up with specific module paths,
+an honest reading of what is verified vs. what is tested, and enough detail
+for an external reviewer to trace the critical analysis and transformation paths.
+
+== Claim 1: Haskell-based PHP parser and hardening tool
 
 [quote, README]
 ____
 Haskell-based PHP hardening and security analysis tool.
 ____
 
+*How it works.*
+The Haskell source tree lives under `src/Sanctify/`.
+`AST.hs` defines the complete PHP abstract syntax tree: `PhpFile`,
+`Statement`, `Expr`, `PhpType`, `ClassMember`, `TraitAdaptation`, and
+`SourcePos` (for error reporting), all using the `{-# LANGUAGE StrictData #-}`
+pragma to prevent thunk accumulation on large codebases.
+`Parser.hs` (and the `Parser/` subdirectory) implements a Megaparsec-based
+PHP parser exposing `parsePhpFile`, `parsePhpString`, `parseStatement`, and
+`parseExpr` as the primary API surface.
+The analysis pipeline in `Analysis/` contains `Security.hs` (SQL injection,
+XSS, CSRF, command injection detection), `Taint.hs` (full taint tracking from
+sources to sinks), `Advanced.hs`, `Types.hs`, and `DeadCode.hs`.
+Transformations live in `Transform/`: `Strict.hs` inserts
+`declare(strict_types=1)`, `TypeHints.hs` infers and adds parameter/return
+type annotations, and `Sanitize.hs` wraps unescaped `echo` output in
+`esc_html()`.
+`Report.hs` serialises analysis results to JSON, SARIF, and HTML.
+The `WordPress/` module enforces WordPress-specific constraints (ABSPATH
+checks, text-domain presence, nonce verification).
+`app/Main.hs` is the CLI entry point; `sanctify-php.cabal` declares the
+build.
+
+*Honest caveat.*
+The README includes an explicit note: "It should not be read as proof that
+every analysis and transform is already trustworthy enough for production
+security decisions."
+Taint analysis tests and end-to-end execution coverage are the most notable
+remaining gaps — `PROOF-NEEDS.md` and `TEST-NEEDS.md` list the outstanding
+obligations.
+
+== Claim 2: Multiple output formats and infrastructure export
+
+[quote, README]
+____
+Generates reports in JSON/SARIF/HTML formats. Exports infrastructure
+recommendations (php.ini, nginx, Guix).
+____
+
+*How it works.*
+`Report.hs` implements the format serialisation: the `ReportFormat` sum type
+selects JSON (via `aeson`), SARIF (structured diagnostic format for IDE/SAST
+integration), or HTML (standalone rendered report).
+The `sanctify export` subcommand (wired in `app/Main.hs`) reads the analysis
+results and emits php.ini hardening directives, nginx security headers, or a
+Guix package override as plain text appended to the target config file.
+The `bench/` directory contains criterion benchmarks measuring parser and
+analysis throughput on representative PHP codebases.
+Test plugins in `test-plugins/` provide real-world WordPress plugin fixtures
+for integration tests.
+
+*Honest caveat.*
+SARIF output enables IDE integration (VS Code problem matcher, GitHub
+Advanced Security upload) but end-to-end round-trip tests from PHP source to
+SARIF upload are absent — the feature is structural rather than validated.
+
+== Dogfooded Across The Account
+
+[cols="1,3", options="header"]
+|===
+| Tool / Repo | How sanctify-php uses it
+
+| `panic-attacker`
+| Pre-commit security scan gate (`just pre-commit`)
+
+| `contractile.just` / contractiles
+| Standard hyperpolymath contractile integration hook
+
+| `stapeln.toml`
+| Container build manifest for the Haskell tool image
+
+| `guix.scm` / `guix/`
+| Guix package expression; the export subcommand also emits Guix override stanzas
+
+| `flake.nix`
+| Nix flake for reproducible build environment (GHC, Cabal)
+
+| `Hypatia CI`
+| `hypatia-scan.yml` workflow applies neurosymbolic security rules to each commit
+
+| `PROOF-NEEDS.md`
+| Consumed by Hypatia and gitbot-fleet to track outstanding proof obligations
+|===
+
 == File Map
 
-[cols="1,2"]
+[cols="2,4", options="header"]
 |===
 | Path | What's There
 
-| `src/` | Source code
-| `test(s)/` | Test suite
+| `src/Sanctify/AST.hs`
+| PHP AST definition: all node types from `PhpFile` to `TraitAdaptation`; uses `StrictData`
+
+| `src/Sanctify/Parser.hs`
+| Megaparsec PHP parser entry points: `parsePhpFile`, `parsePhpString`, `parseStatement`, `parseExpr`
+
+| `src/Sanctify/Parser/`
+| Sub-parsers: expression, statement, declaration, class-member parsers broken out by production rule group
+
+| `src/Sanctify/Analysis/Security.hs`
+| Vulnerability detection: SQLi, XSS, CSRF, command injection pattern matching over the AST
+
+| `src/Sanctify/Analysis/Taint.hs`
+| Taint tracking: source tagging at user input, propagation through assignments, sink detection at output/exec calls
+
+| `src/Sanctify/Analysis/Advanced.hs`
+| Higher-level analysis passes (type-coercion risks, insecure deserialisation, SSRF patterns)
+
+| `src/Sanctify/Analysis/DeadCode.hs`
+| Dead code detection: unreachable branches, unused variables after strict-type enforcement
+
+| `src/Sanctify/Analysis/Types.hs`
+| Analysis result types: `Finding`, `Severity`, `Location`, `AnalysisReport`
+
+| `src/Sanctify/Transform/Strict.hs`
+| Inserts `declare(strict_types=1)` at file head where absent
+
+| `src/Sanctify/Transform/TypeHints.hs`
+| Infers and adds parameter and return type annotations
+
+| `src/Sanctify/Transform/Sanitize.hs`
+| Wraps `echo $var` with `esc_html()` / `esc_attr()` for WordPress output contexts
+
+| `src/Sanctify/Transform/StrictTypes.hs`
+| Enforces PHP 8 strict typing constraints across class hierarchies
+
+| `src/Sanctify/Report.hs`
+| Serialises `AnalysisReport` to JSON (aeson), SARIF, and HTML
+
+| `src/Sanctify/Ruleset.hs`
+| Ruleset configuration: which checks to enable, severity overrides, exclusion patterns
+
+| `src/Sanctify/Config.hs`
+| Configuration loading from `.sanctify.yaml` or CLI flags
+
+| `src/Sanctify/Emit.hs`
+| Pretty-printer: reconstructs PHP source from a transformed AST
+
+| `src/Sanctify/WordPress/`
+| WordPress-specific checks: ABSPATH guard, text-domain presence, nonce verification, capability checks
+
+| `app/Main.hs`
+| CLI entry point: subcommands `analyze`, `fix`, `report`, `export`
+
+| `sanctify-php.cabal`
+| Cabal build descriptor; lists all source modules and their dependencies
+
+| `bench/`
+| Criterion benchmarks: parser throughput, analysis latency on fixture codebases
+
+| `test/`
+| HSpec unit tests for AST round-trips and individual transform passes
+
+| `tests/`
+| Integration tests: full pipeline from PHP source to report output
+
+| `test-plugins/`
+| Real-world WordPress plugin fixtures for integration and regression testing
+
+| `docs/`
+| Design documents: taint model, SARIF schema mapping, WordPress constraint rationale
+
+| `PROOF-NEEDS.md`
+| Outstanding formal proof obligations for security-analysis core
+
+| `TEST-NEEDS.md`
+| Known testing gaps: taint end-to-end, SARIF upload round-trip
+
+| `PRIORITY.adoc`
+| Prioritised work backlog for the next development phase
+
+| `flake.nix` / `guix.scm`
+| Reproducible build environments (GHC + Cabal) via Nix and Guix
 |===
 
 == Questions?
