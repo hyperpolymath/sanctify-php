@@ -155,3 +155,8 @@ jobs:
           echo "All critical checks passed."
           echo ""
           echo "For more info, see: robot-repo-bot/ERROR-CATALOG.scm"
+
+  - name: K9-SVC Validation
+    run: |
+      echo "K9-SVC validation"
+      [ -d .machine_readable/contractiles ] && echo "Contractiles present" || echo "No contractiles"
