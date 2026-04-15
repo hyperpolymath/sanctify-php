@@ -3,6 +3,8 @@
 
 set shell := ["bash", "-uc"]
 
+import? "contractile.just"
+
 default:
     @just --list
 
