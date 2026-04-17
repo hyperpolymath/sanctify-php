@@ -79,3 +79,10 @@ htmlcov/
 /tmp/
 *.tmp
 *.bak
+target/
+node_modules/
+_build/
+deps/
+.elixir_ls/
+build/
+dist/
