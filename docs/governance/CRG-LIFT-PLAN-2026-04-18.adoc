@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+
+= Sanctify-PHP — CRG Lift Plan (E -> D -> C)
+Codex
+2026-04-18
+:toc:
+:sectnums:
+
+== Context
+
+`docs/governance/CRG-AUDIT-2026-04-18.adoc` demoted Sanctify-PHP from `C` to
+`E` under CRG v2.0 STRICT.
+
+This plan defines the minimum path to recover to `D`, then to `C`.
+
+== Exit Criteria for D
+
+1. `cabal build --enable-tests --enable-benchmarks all` succeeds at HEAD.
+2. `cabal test all` succeeds at HEAD (locally and in CI).
+3. Build break in `src/Sanctify/Parser.hs` is fixed (module-header placement issue removed).
+4. Current state is reflected honestly in `.machine_readable/6a2/STATE.a2ml`.
+
+== Exit Criteria for C
+
+1. Canonical `[dogfooding-status]` exists in `STATE.a2ml` with dated evidence.
+2. Dogfooding log exists (`docs/practice/DOGFOOD-LOG.adoc` or equivalent).
+3. Canonical `docs/READINESS.md`/`.adoc` exists and is aligned to v2.0 strict criteria.
+4. Per-directory orientation coverage is improved in key implementation trees (`src/`, `app/`, `test/`, `tests/`).
+5. CI green evidence is current and linked from state/readiness docs.
+
+== Work Packages
+
+=== WP1 — Build Recovery (E -> D blocker)
+
+- Remove or correct the pre-module token in `src/Sanctify/Parser.hs` so `module Sanctify.Parser` is the first declaration context.
+- Re-run:
+  * `cabal build --enable-tests --enable-benchmarks all`
+  * `cabal test all --test-show-details=direct`
+- Record pass/fail outputs in an audit note.
+
+=== WP2 — Canonical State and Readiness
+
+- Add `docs/READINESS.md` or `docs/READINESS.adoc` with:
+  * current grade/date
+  * criteria-by-criteria evidence
+  * blockers to next grade
+- Keep `.machine_readable/6a2/STATE.a2ml` synchronized with audit outcomes.
+
+=== WP3 — Dogfooding Evidence (D -> C blocker)
+
+- Add `[dogfooding-status]` section to `STATE.a2ml`.
+- Start dogfood log with dated, reproducible runs and links to evidence.
+
+=== WP4 — Annotation Depth
+
+- Add local README orientation files for missing first-level implementation subdirs.
+- Minimum content:
+  * purpose/boundary
+  * entrypoints
+  * invariants/safety constraints
+  * how to run tests
+
+== Sequencing
+
+1. WP1 first (build recovery is hard gate).
+2. WP2 in parallel with WP1 once build is green.
+3. WP3 and WP4 for C readiness.
+4. Re-run CRG audit after each gate (E->D, then D->C).
+
+_End of lift plan._

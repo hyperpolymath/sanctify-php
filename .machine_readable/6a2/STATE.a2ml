@@ -5,15 +5,18 @@
 [metadata]
 project = "sanctify-php"
 version = "0.2.0"
-last-updated = "2026-04-04"
+last-updated = "2026-04-18"
 status = "active"
-crg-grade = "C"
+crg-grade = "E"
+crg-grade-previous = "C"
+crg-grade-demoted = "2026-04-18"
+crg-grade-notes = "Demoted C->E per docs/governance/CRG-AUDIT-2026-04-18.adoc: build/test at HEAD fails (Parser module-header break), no canonical dogfooding section, and no READINESS document."
 
 [project-context]
 name = "sanctify-php"
 completion-percentage = 95
-phase = "CRG C Complete - Comprehensive Test Coverage"
-crg-status = "C (Unit + Smoke + Build + P2P + E2E + Reflexive + Contract + Aspect + Benchmarks)"
+phase = "Build recovery after CRG demotion"
+crg-status = "E (build break at HEAD; see docs/governance/CRG-AUDIT-2026-04-18.adoc)"
 
 [recent-work]
 completed-date = "2026-04-04"

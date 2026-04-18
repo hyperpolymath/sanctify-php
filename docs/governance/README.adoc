@@ -1,0 +1,6 @@
+= Governance
+
+CRG governance artifacts:
+
+* link:CRG-AUDIT-2026-04-18.adoc[CRG-AUDIT-2026-04-18.adoc]
+* link:CRG-LIFT-PLAN-2026-04-18.adoc[CRG-LIFT-PLAN-2026-04-18.adoc]

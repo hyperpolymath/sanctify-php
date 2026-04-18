@@ -1,0 +1,172 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+
+= Sanctify-PHP — CRG Audit (2026-04-18)
+Codex
+2026-04-18
+:toc:
+:sectnums:
+
+== Scope and Standard
+
+Evaluates `verification-ecosystem/sanctify-php` against *Component Readiness
+Grades v2.0 (STRICT)*.
+
+- Standard: `standards/component-readiness-grades/COMPONENT-READINESS-GRADES.md`
+- Criteria boilerplate: `rsr-template-repo/docs/governance/CRG-CRITERIA.adoc`
+- Self-declared grade source:
+  * `.machine_readable/6a2/STATE.a2ml` -> `crg-grade = "C"`, `version = "0.2.0"`, `completion-percentage = 95`
+- Audit date: 2026-04-18
+
+This audit grades the repo *as-is today*, not aspirationally.
+
+== v2.0 Strictness Recap
+
+[cols="1,3,4"]
+|===
+| Grade | Release Stage | Hard Requirement (v2.0)
+
+| X | None             | Untested.
+| F | Reject           | Harmful, wasteful, or superseded.
+| E | Pre-alpha        | >=1 test, failures documented.
+| D | Alpha            | Test matrix + scope documented + *RSR compliance mandatory*.
+| C | Alpha-stable     | Dogfooded, CI green, *deep per-file + per-directory annotation*.
+| B | Beta             | 6+ *diverse* external targets, issues fed back.
+| A | Stable           | Real-world external feedback confirms value; no harm.
+|===
+
+== Evidence Inventory (verified 2026-04-18)
+
+=== Structural compliance
+
+[cols="2,1,3"]
+|===
+| Item | State | Source
+
+| RSR workflows (17+)
+| PRESENT (22)
+| `.github/workflows/`
+
+| `.machine_readable/6a2/` canonical A2ML
+| PRESENT
+| `STATE/META/ECOSYSTEM/AGENTIC/NEUROSYM/PLAYBOOK`
+
+| `0-AI-MANIFEST.a2ml`
+| PRESENT
+| Root
+
+| `EXPLAINME` + READINESS
+| PARTIAL
+| `EXPLAINME.adoc` present; no `docs/READINESS.md` or `docs/READINESS.adoc`
+
+| `guix.scm` + `flake.nix`
+| PRESENT
+| Root
+
+| `.well-known` baseline (`security.txt`, `ai.txt`, `humans.txt`)
+| PRESENT
+| `.well-known/`
+
+| Container policy
+| N/A
+| No `Containerfile`/`Dockerfile` artifacts in this repo
+
+| Contractile trident
+| PRESENT
+| `.machine_readable/INTENT/TRUST/MUST/ADJUST.contractile`
+
+| `Justfile` + no `Makefile`
+| PRESENT
+| Root `Justfile`; root `Mustfile`; no `Makefile`
+|===
+
+=== Test/build evidence
+
+Declared evidence:
+
+- `TEST-NEEDS.md` claims CRG-C with 150+ tests and benchmarks.
+- CI `haskell.yml` runs `cabal build --enable-tests --enable-benchmarks all` and `cabal test all` on push/PR to `main`.
+
+Executable evidence (local, 2026-04-18):
+
+- `cabal test all --test-show-details=direct` run to mirror CI intent.
+- Dependency resolution succeeded, but build failed at HEAD:
+  * `src/Sanctify/Parser.hs:1:1: File name does not match module name: Saw 'Main', Expected 'Sanctify.Parser'`
+  * Root cause in-file: non-comment token (`//! ...`) appears before `module Sanctify.Parser`, invalidating module-header placement.
+
+Current state is build-broken, so C claims are not currently valid.
+
+=== Annotation depth and dogfooding evidence
+
+- No canonical `[dogfooding-status]` section in `STATE.a2ml`.
+- No `DOGFOOD-LOG` found.
+- Implementation-subtree orientation coverage is weak (`7/24` first-level dirs under key roots have local README files).
+
+These fail C strictness even if build were green.
+
+=== External validation
+
+- No `[external-targets]`, `[issues-fed-back]`, or `[field-signal]` sections in `STATE.a2ml`.
+
+B/A are unsupported.
+
+== Grade x Evidence Matrix
+
+[cols="1,1,3,3"]
+|===
+| Grade | Met? | Evidence supporting | Evidence against / gaps
+
+| X
+| n/a
+| Tests and CI scripts exist
+| —
+
+| F
+| n/a
+| No harmful/superseded signal in this audit
+| —
+
+| E
+| ✓
+| Repo has substantial tests and failures are now concretely documented
+| —
+
+| D
+| ✗
+| Structural baseline mostly present
+| Build/test at HEAD fails; cannot presently claim Alpha stability floor
+
+| C
+| ✗
+| Historical test inventory is substantial
+| Build broken, no canonical dogfooding evidence, no READINESS doc, weak subtree orientation
+
+| B
+| ✗
+| —
+| No external-target evidence
+
+| A
+| ✗
+| —
+| No field-signal evidence
+|===
+
+== Verdict
+
+*Current CRG grade: **E (Pre-alpha)**.*
+
+The self-declared `C` is an overclaim under v2.0 STRICT.
+
+Key blockers:
+
+1. Fix compile break in `src/Sanctify/Parser.hs` so `cabal build/test` runs cleanly.
+2. Add canonical dogfooding evidence (`[dogfooding-status]` + log).
+3. Add canonical `docs/READINESS.md`/`.adoc`.
+4. Improve per-directory orientation coverage in implementation subtrees.
+
+== Related Files
+
+- `.machine_readable/6a2/STATE.a2ml` — updated `C -> E` with audit reference.
+- `docs/governance/CRG-LIFT-PLAN-2026-04-18.adoc` — E->D->C remediation path.
+
+_End of audit._
