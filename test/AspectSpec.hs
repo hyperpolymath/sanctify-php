@@ -1,5 +1,5 @@
 -- | Aspect Tests - Security, robustness, and error handling for the analyzer itself
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 module AspectSpec (spec) where
 
 import Test.Hspec

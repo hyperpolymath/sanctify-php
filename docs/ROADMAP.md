@@ -185,7 +185,7 @@ sanctify-php-composer/
 ```php
 <?php
 declare(strict_types=1);
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 
 namespace Sanctify\Composer;
 
@@ -328,7 +328,7 @@ Cache analysis results and only rescan changed files:
 
 ```haskell
 -- src/Sanctify/Cache.hs
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 
 module Sanctify.Cache
   ( AnalysisCache(..)
@@ -406,7 +406,7 @@ Add detection for semantic web output patterns:
 
 ```haskell
 -- src/Sanctify/Analysis/Semantic.hs
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 
 module Sanctify.Analysis.Semantic
   ( SemanticContext(..)
@@ -762,5 +762,5 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ---
 
-*SPDX-License-Identifier: PMPL-1.0-or-later
+*SPDX-License-Identifier: MPL-2.0
 *SPDX-FileCopyrightText: 2024-2025 hyperpolymath*

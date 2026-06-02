@@ -213,5 +213,5 @@ The complete Sinople integration found a **real security vulnerability**:
 
 ---
 
-*SPDX-License-Identifier: PMPL-1.0-or-later
+*SPDX-License-Identifier: MPL-2.0
 *SPDX-FileCopyrightText: 2024-2025 hyperpolymath*

@@ -1,5 +1,5 @@
 -- | Property-Based Tests - QuickCheck validation
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 module PropertySpec (spec) where
 
 import Test.Hspec

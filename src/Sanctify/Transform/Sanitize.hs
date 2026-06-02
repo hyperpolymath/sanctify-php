@@ -1,5 +1,5 @@
 -- | Transform PHP code to add sanitization and escaping
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 module Sanctify.Transform.Sanitize
     ( -- * Output escaping
       wrapWithEscape
