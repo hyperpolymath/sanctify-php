@@ -406,7 +406,7 @@ Integrate Sanctify-PHP into your Git workflow:
 ----
 # .git/hooks/pre-commit
 #!/bin/bash
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 
 echo "Running Sanctify-PHP security checks..."
 

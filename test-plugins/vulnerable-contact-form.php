@@ -3,7 +3,7 @@
  * Plugin Name: Vulnerable Contact Form
  * Description: Simplified example with security issues
  * Version: 1.0.0
- * SPDX-License-Identifier: PMPL-1.0-or-later
+ * SPDX-License-Identifier: MPL-2.0
  */
 
 // Missing ABSPATH check

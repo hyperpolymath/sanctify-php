@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- | WordPress-Specific Security Deep Analysis
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 module Sanctify.WordPress.Security
     ( -- * WordPress security analysis
       analyzeWordPressSecurity

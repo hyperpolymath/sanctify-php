@@ -284,7 +284,7 @@ X-Bastion-Request-ID: uuid-for-provenance
 ```php
 <?php
 declare(strict_types=1);
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 
 namespace Aegis\IndieWeb;
 
@@ -351,7 +351,7 @@ sanctify-php detects missing IndieWeb security patterns:
 
 ```haskell
 -- src/Sanctify/IndieWeb/Analysis.hs
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 
 module Sanctify.IndieWeb.Analysis
   ( detectIndieWebEndpoints
@@ -469,5 +469,5 @@ See: hyperpolymath/sanctify-php/docs/INDIEWEB-COLLABORATION.md
 
 ---
 
-*SPDX-License-Identifier: PMPL-1.0-or-later
+*SPDX-License-Identifier: MPL-2.0
 *SPDX-FileCopyrightText: 2024-2025 hyperpolymath*

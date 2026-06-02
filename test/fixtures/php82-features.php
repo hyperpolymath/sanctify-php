@@ -1,5 +1,5 @@
 <?php
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Test fixture: PHP 8.2+ features
 
 declare(strict_types=1);
