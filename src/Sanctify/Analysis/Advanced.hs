@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- | Advanced Security Analysis - Beyond OWASP Top 10
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 module Sanctify.Analysis.Advanced
     ( -- * Advanced vulnerability detection
       checkReDoS

@@ -1,5 +1,5 @@
 -- | Benchmark suite for sanctify-php
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 module Main where
 
 import Criterion.Main
@@ -169,6 +169,6 @@ generatePhp :: Int -> T.Text
 generatePhp lineCount =
     T.pack $ unlines $
         [ "<?php"
-        , "// SPDX-License-Identifier: PMPL-1.0-or-later"
+        , "// SPDX-License-Identifier: MPL-2.0"
         , "// Generated benchmark fixture"
         ] ++ replicate (lineCount - 3) "echo 'line';"

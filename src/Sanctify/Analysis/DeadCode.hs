@@ -1,6 +1,6 @@
 -- | Dead code analysis for PHP
 -- Detects unused variables and unreachable code
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 module Sanctify.Analysis.DeadCode
     ( -- * Main analysis
       analyzeDeadCode

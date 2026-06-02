@@ -1,5 +1,5 @@
 -- | Taint tracking analysis for PHP code
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 module Sanctify.Analysis.Taint
     ( -- * Taint analysis
       TaintAnalysis(..)

@@ -1,5 +1,5 @@
 -- | Transform PHP code to add type hints
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 module Sanctify.Transform.TypeHints
     ( -- * Adding type hints
       addParameterTypeHints

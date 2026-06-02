@@ -1,5 +1,5 @@
 -- | Parser test suite - Golden file tests
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 module ParserSpec (spec) where
 
 import Test.Hspec
