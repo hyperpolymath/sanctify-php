@@ -197,5 +197,5 @@ See `docs/ROADMAP.md` Phase 1 for details.
 
 ---
 
-*SPDX-License-Identifier: MPL-2.0
+*SPDX-License-Identifier: CC-BY-SA-4.0
 *SPDX-FileCopyrightText: 2024-2025 hyperpolymath*
