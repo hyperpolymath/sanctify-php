@@ -307,7 +307,7 @@ Create `.sanctify.yaml` in your project root:
 [source,yaml]
 ----
 # Sanctify-PHP Configuration
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: CC-BY-SA-4.0
 
 analysis:
   min-severity: medium

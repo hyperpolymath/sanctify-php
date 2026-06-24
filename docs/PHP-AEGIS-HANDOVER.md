@@ -107,7 +107,7 @@ php-aegis (PHP 8.1+)           ← Modern API with enums, union types
 
 ```php
 <?php
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // php-aegis-compat/src/Escape.php
 
 namespace Aegis;
@@ -176,7 +176,7 @@ if (PHP_VERSION_ID >= 80100) {
 
 ```php
 <?php
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // php-aegis/src/WordPress/functions.php
 
 namespace Aegis\WordPress;
@@ -258,7 +258,7 @@ if (defined('ABSPATH')) {
 
 ```php
 <?php
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 
 namespace Aegis;
 
@@ -346,7 +346,7 @@ Aegis\IndieWeb\Micropub::sanitizeContent($content, $context);
 ```php
 <?php
 declare(strict_types=1);
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 
 namespace Aegis\Semantic;
 
@@ -409,7 +409,7 @@ final class Turtle
 ```php
 <?php
 declare(strict_types=1);
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2024-2025 hyperpolymath
 
 namespace Aegis;
@@ -424,7 +424,7 @@ namespace Aegis;
 ```php
 <?php
 declare(strict_types=1);
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 
 namespace Aegis;
 
@@ -603,5 +603,5 @@ For questions about this handover or sanctify-php integration:
 
 ---
 
-*SPDX-License-Identifier: MPL-2.0
+*SPDX-License-Identifier: CC-BY-SA-4.0
 *SPDX-FileCopyrightText: 2024-2025 hyperpolymath*
