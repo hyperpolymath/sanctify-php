@@ -1,111 +1,149 @@
-# PHP-Aegis Handover Document
+== PHP-Aegis Handover Document
 
-## Context
+=== Context
 
-This document provides integration feedback from multiple WordPress projects:
-1. **wp-sinople-theme** - Semantic theme with IndieWeb/Micropub support
-2. **Zotpress** - Mature WordPress plugin (already well-secured)
+This document provides integration feedback from multiple WordPress
+projects: 1. *wp-sinople-theme* - Semantic theme with IndieWeb/Micropub
+support 2. *Zotpress* - Mature WordPress plugin (already well-secured)
 
-**Integration Report Date**: 2025-12-27
+*Integration Report Date*: 2025-12-27
 
----
+'''''
 
-## Executive Summary
+=== Executive Summary
 
-### The Core Problem
+==== The Core Problem
 
-**php-aegis duplicates WordPress core functionality** without providing additional value for WordPress projects.
+*php-aegis duplicates WordPress core functionality* without providing
+additional value for WordPress projects.
 
-| php-aegis | WordPress Equivalent | Winner |
-|-----------|---------------------|--------|
-| `Validator::email()` | `is_email()` | WordPress (more edge cases) |
-| `Validator::url()` | `wp_http_validate_url()` | WordPress (protocol-aware) |
-| `Sanitizer::html()` | `esc_html()` | WordPress (context-aware) |
-| `Sanitizer::stripTags()` | `wp_strip_all_tags()` | WordPress (more thorough) |
-| Generic escaping | `esc_html()`, `esc_attr()`, `esc_url()`, `esc_js()` | **WordPress (context-specific)** |
+[width="100%",cols="28%,52%,20%",options="header",]
+|===
+|php-aegis |WordPress Equivalent |Winner
+|`+Validator::email()+` |`+is_email()+` |WordPress (more edge cases)
 
-### Strategic Decision Required
+|`+Validator::url()+` |`+wp_http_validate_url()+` |WordPress
+(protocol-aware)
+
+|`+Sanitizer::html()+` |`+esc_html()+` |WordPress (context-aware)
+
+|`+Sanitizer::stripTags()+` |`+wp_strip_all_tags()+` |WordPress (more
+thorough)
+
+|Generic escaping |`+esc_html()+`, `+esc_attr()+`, `+esc_url()+`,
+`+esc_js()+` |*WordPress (context-specific)*
+|===
+
+==== Strategic Decision Required
 
 php-aegis must choose a positioning:
 
-**Option A: Non-WordPress PHP Library**
-- Document that php-aegis is for Laravel, Symfony, vanilla PHP
-- Don't compete with WordPress's mature security APIs
-- Focus on frameworks that lack built-in security
+*Option A: Non-WordPress PHP Library* - Document that php-aegis is for
+Laravel, Symfony, vanilla PHP - Don’t compete with WordPress’s mature
+security APIs - Focus on frameworks that lack built-in security
 
-**Option B: WordPress Superset Library**
-- Provide capabilities WordPress lacks (semantic web, IndieWeb, ActivityPub)
-- Integrate with (not replace) WordPress functions
-- Be additive, not duplicative
+*Option B: WordPress Superset Library* - Provide capabilities WordPress
+lacks (semantic web, IndieWeb, ActivityPub) - Integrate with (not
+replace) WordPress functions - Be additive, not duplicative
 
-**Recommendation: Option B** — Provide unique value WordPress lacks.
+*Recommendation: Option B* — Provide unique value WordPress lacks.
 
----
+'''''
 
-## Integration Feedback Summary
+=== Integration Feedback Summary
 
-### Issues Identified with php-aegis
+==== Issues Identified with php-aegis
 
-| Issue | Severity | Impact |
-|-------|----------|--------|
-| Duplicates WordPress core | **Critical** | No value add for WP projects |
-| Lacks context-aware escaping | **Critical** | WP has html/attr/url/js contexts, Aegis has generic |
-| PHP 8.1+ blocks WordPress adoption | **Critical** | WordPress 6.4 supports PHP 7.4+, most hosts still on 7.4/8.0 |
-| No WordPress adapter | High | camelCase API vs snake_case WordPress conventions |
-| Feature set too minimal | Medium | WordPress has equivalent functions already |
-| No RDF/Turtle escaping | High | Semantic themes require W3C-compliant escaping |
-| Limited validators | Medium | Only email/url - missing int(), ip(), domain(), uuid(), credit_card() |
-| Missing SPDX license headers | Low | Compliance concern for FOSS projects |
+[width="100%",cols="28%,40%,32%",options="header",]
+|===
+|Issue |Severity |Impact
+|Duplicates WordPress core |*Critical* |No value add for WP projects
 
-### What Mature WordPress Projects Already Have
+|Lacks context-aware escaping |*Critical* |WP has html/attr/url/js
+contexts, Aegis has generic
 
-The Zotpress integration revealed that well-maintained WordPress plugins already:
-- ✅ Have ABSPATH protection on all files
-- ✅ Use prepared statements for all database queries
-- ✅ Verify nonces on AJAX handlers
-- ✅ Sanitize input and escape output throughout
-- ✅ Follow WordPress coding standards
+|PHP 8.1+ blocks WordPress adoption |*Critical* |WordPress 6.4 supports
+PHP 7.4+, most hosts still on 7.4/8.0
 
-**Conclusion**: php-aegis provides no value for these projects unless it offers something WordPress doesn't.
+|No WordPress adapter |High |camelCase API vs snake_case WordPress
+conventions
 
----
+|Feature set too minimal |Medium |WordPress has equivalent functions
+already
 
-## Detailed Recommendations
+|No RDF/Turtle escaping |High |Semantic themes require W3C-compliant
+escaping
 
-### 0. CRITICAL: Define Target Audience
+|Limited validators |Medium |Only email/url - missing int(), ip(),
+domain(), uuid(), credit_card()
+
+|Missing SPDX license headers |Low |Compliance concern for FOSS projects
+|===
+
+==== What Mature WordPress Projects Already Have
+
+The Zotpress integration revealed that well-maintained WordPress plugins
+already: - ✅ Have ABSPATH protection on all files - ✅ Use prepared
+statements for all database queries - ✅ Verify nonces on AJAX handlers
+- ✅ Sanitize input and escape output throughout - ✅ Follow WordPress
+coding standards
+
+*Conclusion*: php-aegis provides no value for these projects unless it
+offers something WordPress doesn’t.
+
+'''''
+
+=== Detailed Recommendations
+
+==== 0. CRITICAL: Define Target Audience
 
 Before any implementation, php-aegis must answer:
 
-> **Who is this library for?**
+____
+*Who is this library for?*
+____
 
-| Audience | Should php-aegis target? | Why |
-|----------|-------------------------|-----|
-| WordPress plugins/themes | Only if offering unique value | WP core already handles standard security |
-| Laravel applications | Yes | Laravel has security but less comprehensive |
-| Symfony applications | Yes | Similar to Laravel |
-| Vanilla PHP | Yes | No built-in security |
-| Semantic web apps | **Yes - unique opportunity** | No existing library handles RDF/Turtle |
-| IndieWeb apps | **Yes - unique opportunity** | Micropub/Webmention security not solved |
-| ActivityPub/Fediverse | **Yes - unique opportunity** | Complex content policies needed |
+[width="100%",cols="26%,62%,12%",options="header",]
+|===
+|Audience |Should php-aegis target? |Why
+|WordPress plugins/themes |Only if offering unique value |WP core
+already handles standard security
 
-### 1. CRITICAL: PHP 7.4+ Compatibility Layer
+|Laravel applications |Yes |Laravel has security but less comprehensive
 
-**Problem**: php-aegis requires PHP 8.1+, but WordPress ecosystem reality:
-- WordPress 6.4+ officially supports PHP 7.4+
-- Many shared hosts still run PHP 7.4 or 8.0
-- Plugin/theme developers must support the WordPress minimum
+|Symfony applications |Yes |Similar to Laravel
 
-**Solution**: Split into two packages:
+|Vanilla PHP |Yes |No built-in security
 
-```
+|Semantic web apps |*Yes - unique opportunity* |No existing library
+handles RDF/Turtle
+
+|IndieWeb apps |*Yes - unique opportunity* |Micropub/Webmention security
+not solved
+
+|ActivityPub/Fediverse |*Yes - unique opportunity* |Complex content
+policies needed
+|===
+
+==== 1. CRITICAL: PHP 7.4+ Compatibility Layer
+
+*Problem*: php-aegis requires PHP 8.1+, but WordPress ecosystem reality:
+- WordPress 6.4+ officially supports PHP 7.4+ - Many shared hosts still
+run PHP 7.4 or 8.0 - Plugin/theme developers must support the WordPress
+minimum
+
+*Solution*: Split into two packages:
+
+....
 php-aegis (PHP 8.1+)           ← Modern API with enums, union types
     │
     └── php-aegis-compat (PHP 7.4+)  ← Polyfill package for WordPress
-```
+....
 
-**php-aegis-compat Implementation**:
+*php-aegis-compat Implementation*:
 
-```php
+[source,php]
+----
 <?php
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // php-aegis-compat/src/Escape.php
@@ -139,10 +177,12 @@ final class Escape
         }
     }
 }
-```
+----
 
-**Composer Setup**:
-```json
+*Composer Setup*:
+
+[source,json]
+----
 {
     "name": "hyperpolymath/php-aegis-compat",
     "description": "PHP 7.4+ compatibility layer for php-aegis",
@@ -156,25 +196,29 @@ final class Escape
         "psr-4": { "Aegis\\": "src/" }
     }
 }
-```
+----
 
-**Usage in WordPress plugins**:
-```php
+*Usage in WordPress plugins*:
+
+[source,php]
+----
 // In plugin bootstrap
 if (PHP_VERSION_ID >= 80100) {
     require_once __DIR__ . '/vendor/hyperpolymath/php-aegis/autoload.php';
 } else {
     require_once __DIR__ . '/vendor/hyperpolymath/php-aegis-compat/autoload.php';
 }
-```
+----
 
-### 1. WordPress Adapter (snake_case API)
+==== 1. WordPress Adapter (snake_case API)
 
-**Problem**: WordPress uses `snake_case` functions, php-aegis uses `CamelCase` methods.
+*Problem*: WordPress uses `+snake_case+` functions, php-aegis uses
+`+CamelCase+` methods.
 
-**Solution**: Provide WordPress adapter functions:
+*Solution*: Provide WordPress adapter functions:
 
-```php
+[source,php]
+----
 <?php
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // php-aegis/src/WordPress/functions.php
@@ -217,10 +261,12 @@ function aegis_validate_ip(string $value): ?string {
 function aegis_validate_domain(string $value): ?string {
     return Validate::domain($value);
 }
-```
+----
 
-**Registration via WordPress hooks**:
-```php
+*Registration via WordPress hooks*:
+
+[source,php]
+----
 <?php
 // php-aegis/src/WordPress/Loader.php
 
@@ -248,15 +294,17 @@ final class Loader
 if (defined('ABSPATH')) {
     add_action('plugins_loaded', [Loader::class, 'init']);
 }
-```
+----
 
-### 2. Extended Validators
+==== 2. Extended Validators
 
-**Problem**: Only `email()` and `url()` validators exist. Real-world needs:
+*Problem*: Only `+email()+` and `+url()+` validators exist. Real-world
+needs:
 
-**Add these validators**:
+*Add these validators*:
 
-```php
+[source,php]
+----
 <?php
 // SPDX-License-Identifier: CC-BY-SA-4.0
 
@@ -312,15 +360,18 @@ final class Validate
         return null;
     }
 }
-```
+----
 
-### 3. Differentiate from WordPress Core Functions
+==== 3. Differentiate from WordPress Core Functions
 
-**Problem**: WordPress already provides `esc_html()`, `esc_attr()`, `sanitize_text_field()`, etc.
+*Problem*: WordPress already provides `+esc_html()+`, `+esc_attr()+`,
+`+sanitize_text_field()+`, etc.
 
-**Recommendation**: php-aegis should provide value *beyond* WordPress core:
+*Recommendation*: php-aegis should provide value _beyond_ WordPress
+core:
 
-```php
+[source,php]
+----
 // INSTEAD OF duplicating WordPress functions:
 Aegis\Escape::html($string);  // ← WordPress already has esc_html()
 
@@ -329,21 +380,22 @@ Aegis\Semantic\Turtle::escapeString($string);   // ← WordPress doesn't have th
 Aegis\Semantic\Turtle::escapeIRI($iri);
 Aegis\Semantic\JsonLd::sanitize($data);
 Aegis\IndieWeb\Micropub::sanitizeContent($content, $context);
-```
+----
 
-**Unique Value Opportunities**:
-- Semantic web escaping (RDF, Turtle, JSON-LD, N-Triples)
-- IndieWeb protocol security (Micropub, Webmention, IndieAuth)
-- ActivityPub content sanitization
-- Microformats security validation
+*Unique Value Opportunities*: - Semantic web escaping (RDF, Turtle,
+JSON-LD, N-Triples) - IndieWeb protocol security (Micropub, Webmention,
+IndieAuth) - ActivityPub content sanitization - Microformats security
+validation
 
-### 2. Add RDF/Turtle Escaping Functions
+==== 2. Add RDF/Turtle Escaping Functions
 
-**Problem**: Semantic WordPress themes generate RDF Turtle output. Using `addslashes()` is incorrect and allows injection.
+*Problem*: Semantic WordPress themes generate RDF Turtle output. Using
+`+addslashes()+` is incorrect and allows injection.
 
-**Required Functions**:
+*Required Functions*:
 
-```php
+[source,php]
+----
 <?php
 declare(strict_types=1);
 // SPDX-License-Identifier: CC-BY-SA-4.0
@@ -399,29 +451,34 @@ final class Turtle
         return strtr($iri, $escape);
     }
 }
-```
+----
 
-### 3. Add SPDX License Headers
+==== 3. Add SPDX License Headers
 
-**Problem**: All source files should have SPDX identifiers for license clarity.
+*Problem*: All source files should have SPDX identifiers for license
+clarity.
 
-**Standard Format**:
-```php
+*Standard Format*:
+
+[source,php]
+----
 <?php
 declare(strict_types=1);
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2024-2025 hyperpolymath
 
 namespace Aegis;
-```
+----
 
-### 4. Adopt PHP 8.1+ Features
+==== 4. Adopt PHP 8.1+ Features
 
-**Problem**: Modern PHP provides better type safety that security libraries should leverage.
+*Problem*: Modern PHP provides better type safety that security
+libraries should leverage.
 
-**Recommendations**:
+*Recommendations*:
 
-```php
+[source,php]
+----
 <?php
 declare(strict_types=1);
 // SPDX-License-Identifier: CC-BY-SA-4.0
@@ -464,22 +521,24 @@ final readonly class SecurityPolicy
         public array $allowedSchemes = ['https'],
     ) {}
 }
-```
+----
 
----
+'''''
 
-## Suggested Architecture
+=== Suggested Architecture
 
-### Complementary Roles
+==== Complementary Roles
 
-| Tool | Role | When Used |
-|------|------|-----------|
-| **sanctify-php** | Static analysis & transformation | Build time, CI/CD |
-| **php-aegis** | Runtime security library | Application runtime |
+[width="100%",cols="27%,26%,47%",options="header",]
+|===
+|Tool |Role |When Used
+|*sanctify-php* |Static analysis & transformation |Build time, CI/CD
+|*php-aegis* |Runtime security library |Application runtime
+|===
 
-### Integration Points
+==== Integration Points
 
-```
+....
 ┌─────────────────────────────────────────────────────────┐
 │                    Development Flow                      │
 ├─────────────────────────────────────────────────────────┤
@@ -505,11 +564,11 @@ final readonly class SecurityPolicy
 │                               Defense in depth          │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
-```
+....
 
-### Proposed php-aegis Namespace Structure
+==== Proposed php-aegis Namespace Structure
 
-```
+....
 Aegis/
 ├── Escape.php                 # Core escaping (extends WP when needed)
 ├── Sanitize.php               # Core sanitization
@@ -534,74 +593,85 @@ Aegis/
 └── Policy/                    # Security policies
     ├── ContentSecurityPolicy.php
     └── PermissionsPolicy.php
-```
+....
 
----
+'''''
 
-## sanctify-php Integration Support
+=== sanctify-php Integration Support
 
 We will add support in sanctify-php to:
 
-1. **Recognize php-aegis calls as safe sinks**
-   ```haskell
-   -- In Sanctify.Analysis.Taint
-   aegisSafeSinks :: [Text]
-   aegisSafeSinks =
-     [ "Aegis\\Escape::html"
-     , "Aegis\\Semantic\\Turtle::escapeString"
-     , "Aegis\\IndieWeb\\Micropub::sanitizeContent"
-     -- ...
-     ]
-   ```
+[arabic]
+. *Recognize php-aegis calls as safe sinks*
++
+[source,haskell]
+----
+-- In Sanctify.Analysis.Taint
+aegisSafeSinks :: [Text]
+aegisSafeSinks =
+  [ "Aegis\\Escape::html"
+  , "Aegis\\Semantic\\Turtle::escapeString"
+  , "Aegis\\IndieWeb\\Micropub::sanitizeContent"
+  -- ...
+  ]
+----
+. *Auto-insert php-aegis calls during fix*
++
+[source,haskell]
+----
+-- Transform unescaped output to use php-aegis
+-- Before: echo $user_input;
+-- After:  echo \Aegis\Escape::html($user_input);
+----
+. *Detect semantic context for appropriate escaping*
++
+[source,haskell]
+----
+-- Detect Turtle output context
+-- Recommend: \Aegis\Semantic\Turtle::escapeString()
+-- Instead of: esc_html() (wrong context)
+----
 
-2. **Auto-insert php-aegis calls during fix**
-   ```haskell
-   -- Transform unescaped output to use php-aegis
-   -- Before: echo $user_input;
-   -- After:  echo \Aegis\Escape::html($user_input);
-   ```
+'''''
 
-3. **Detect semantic context for appropriate escaping**
-   ```haskell
-   -- Detect Turtle output context
-   -- Recommend: \Aegis\Semantic\Turtle::escapeString()
-   -- Instead of: esc_html() (wrong context)
-   ```
+=== Action Items for php-aegis Team
 
----
+==== Priority 0 (Critical) — Adoption Blockers
 
-## Action Items for php-aegis Team
+* [ ] Create `+php-aegis-compat+` package for PHP 7.4+
+* [ ] Add WordPress adapter with snake_case functions
+* [ ] Extend `+Validate+` class: `+int()+`, `+ip()+`, `+domain()+`,
+`+uuid()+`, `+slug()+`
 
-### Priority 0 (Critical) — Adoption Blockers
-- [ ] Create `php-aegis-compat` package for PHP 7.4+
-- [ ] Add WordPress adapter with snake_case functions
-- [ ] Extend `Validate` class: `int()`, `ip()`, `domain()`, `uuid()`, `slug()`
+==== Priority 1 (High) — Unique Value
 
-### Priority 1 (High) — Unique Value
-- [ ] Add `Aegis\Semantic\Turtle` namespace with W3C-compliant escaping
-- [ ] Add `Aegis\IndieWeb\Micropub` for content sanitization
-- [ ] Add SPDX headers to all files
+* [ ] Add `+Aegis\Semantic\Turtle+` namespace with W3C-compliant
+escaping
+* [ ] Add `+Aegis\IndieWeb\Micropub+` for content sanitization
+* [ ] Add SPDX headers to all files
 
-### Priority 2 (Medium) — Polish
-- [ ] Use PHP 8.1+ enums for contexts (in main package only)
-- [ ] Add union types throughout API
-- [ ] Document differentiation from WordPress core functions
-- [ ] Auto-detect WordPress and register hooks
+==== Priority 2 (Medium) — Polish
 
-### Priority 3 (Low) — Extended Features
-- [ ] Add ActivityPub sanitization support
-- [ ] Add JSON-LD validation
-- [ ] Laravel adapter (in addition to WordPress)
+* [ ] Use PHP 8.1+ enums for contexts (in main package only)
+* [ ] Add union types throughout API
+* [ ] Document differentiation from WordPress core functions
+* [ ] Auto-detect WordPress and register hooks
 
----
+==== Priority 3 (Low) — Extended Features
 
-## Contact
+* [ ] Add ActivityPub sanitization support
+* [ ] Add JSON-LD validation
+* [ ] Laravel adapter (in addition to WordPress)
 
-For questions about this handover or sanctify-php integration:
-- Repository: hyperpolymath/sanctify-php
-- Issues: https://github.com/hyperpolymath/sanctify-php/issues
+'''''
 
----
+=== Contact
 
-*SPDX-License-Identifier: CC-BY-SA-4.0
-*SPDX-FileCopyrightText: 2024-2025 hyperpolymath*
+For questions about this handover or sanctify-php integration: -
+Repository: hyperpolymath/sanctify-php - Issues:
+https://github.com/hyperpolymath/sanctify-php/issues
+
+'''''
+
+__SPDX-License-Identifier: CC-BY-SA-4.0 __SPDX-FileCopyrightText:
+2024-2025 hyperpolymath*

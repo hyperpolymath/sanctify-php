@@ -1,82 +1,101 @@
-# Sanctify-PHP Roadmap
+== Sanctify-PHP Roadmap
 
-## Context
+=== Context
 
 This roadmap addresses integration feedback from real-world deployment:
-1. **wp-sinople-theme** - Semantic theme with IndieWeb/Micropub support
-2. **Zotpress** - Mature WordPress plugin (couldn't run sanctify-php at all)
+1. *wp-sinople-theme* - Semantic theme with IndieWeb/Micropub support 2.
+*Zotpress* - Mature WordPress plugin (couldn’t run sanctify-php at all)
 
-**Feedback Date**: 2025-12-27
-**Current Version**: 0.1.0.0
+*Feedback Date*: 2025-12-27 *Current Version*: 0.1.0.0
 
----
+'''''
 
-## Critical Finding: Tool Unusable Without Binaries
+=== Critical Finding: Tool Unusable Without Binaries
 
-### Zotpress Integration Failure
+==== Zotpress Integration Failure
 
-> **sanctify-php could not be run at all** because GHC (Haskell compiler) was not available.
-> Manual analysis was performed instead using documented patterns.
+____
+*sanctify-php could not be run at all* because GHC (Haskell compiler)
+was not available. Manual analysis was performed instead using
+documented patterns.
+____
 
-This confirms the #1 adoption blocker: **the Haskell build requirement prevents any usage**.
+This confirms the #1 adoption blocker: *the Haskell build requirement
+prevents any usage*.
 
-### Evidence from Integration Attempts
+==== Evidence from Integration Attempts
 
-| Project | Could run sanctify-php? | Outcome |
-|---------|------------------------|---------|
-| wp-sinople-theme | ⚠️ With difficulty | Required Haskell setup |
-| Zotpress | ❌ **No** | GHC not available, manual analysis only |
+[cols=",,",options="header",]
+|===
+|Project |Could run sanctify-php? |Outcome
+|wp-sinople-theme |⚠️ With difficulty |Required Haskell setup
+|Zotpress |❌ *No* |GHC not available, manual analysis only
+|===
 
----
+'''''
 
-## Issues Identified
+=== Issues Identified
 
-| Issue | Severity | User Impact |
-|-------|----------|-------------|
-| Requires Haskell toolchain | **BLOCKER** | Tool literally cannot run |
-| No `composer require` install | **Critical** | PHP devs expect Composer installation |
-| No pre-built binaries | **Critical** | No workaround for GHC requirement |
-| No Docker container | High | Alternative deployment path missing |
-| No GitHub Action | High | No easy CI/CD integration |
-| No incremental analysis | Medium | Full rescan on every change is slow |
-| No RDF/Turtle awareness | High | Semantic themes get false negatives |
-| Limited PHP 8.x syntax | Medium | May miss some modern PHP patterns |
-| Missing WP integration docs | Medium | Users don't know how to integrate |
+[width="100%",cols="24%,33%,43%",options="header",]
+|===
+|Issue |Severity |User Impact
+|Requires Haskell toolchain |*BLOCKER* |Tool literally cannot run
 
-### Key Insight
+|No `+composer require+` install |*Critical* |PHP devs expect Composer
+installation
 
-> **The Haskell dependency is a BLOCKER, not just an inconvenience.**
-> In the Zotpress integration, the tool could not be used at all.
-> PHP developers cannot and will not install GHC.
-> **Pre-built binaries are not optional — they are required for any adoption.**
+|No pre-built binaries |*Critical* |No workaround for GHC requirement
 
----
+|No Docker container |High |Alternative deployment path missing
 
-## Phase 1: Distribution & Accessibility
+|No GitHub Action |High |No easy CI/CD integration
 
-**Goal**: Make sanctify-php usable without Haskell knowledge
+|No incremental analysis |Medium |Full rescan on every change is slow
 
-### 1.1 Pre-built Binaries
+|No RDF/Turtle awareness |High |Semantic themes get false negatives
+
+|Limited PHP 8.x syntax |Medium |May miss some modern PHP patterns
+
+|Missing WP integration docs |Medium |Users don’t know how to integrate
+|===
+
+==== Key Insight
+
+____
+*The Haskell dependency is a BLOCKER, not just an inconvenience.* In the
+Zotpress integration, the tool could not be used at all. PHP developers
+cannot and will not install GHC. *Pre-built binaries are not optional —
+they are required for any adoption.*
+____
+
+'''''
+
+=== Phase 1: Distribution & Accessibility
+
+*Goal*: Make sanctify-php usable without Haskell knowledge
+
+==== 1.1 Pre-built Binaries
 
 Provide statically-linked binaries for common platforms:
 
-```
+....
 releases/
 ├── sanctify-php-0.2.0-linux-x86_64
 ├── sanctify-php-0.2.0-linux-aarch64
 ├── sanctify-php-0.2.0-darwin-x86_64
 ├── sanctify-php-0.2.0-darwin-aarch64
 └── sanctify-php-0.2.0-windows-x86_64.exe
-```
+....
 
-**Implementation**:
-- [ ] Add GitHub Actions workflow for cross-compilation
-- [ ] Use static linking (`-optl-static -optl-pthread`)
-- [ ] Sign binaries (GPG + sigstore)
-- [ ] Create release automation script
+*Implementation*: - [ ] Add GitHub Actions workflow for
+cross-compilation - [ ] Use static linking
+(`+-optl-static -optl-pthread+`) - [ ] Sign binaries (GPG + sigstore) -
+[ ] Create release automation script
 
-**CI Workflow** (`.github/workflows/release.yml`):
-```yaml
+*CI Workflow* (`+.github/workflows/release.yml+`):
+
+[source,yaml]
+----
 name: Release Binaries
 on:
   push:
@@ -101,13 +120,14 @@ jobs:
           ghc-version: '9.6'
       - run: cabal build --enable-executable-static
       - uses: actions/upload-artifact@v4
-```
+----
 
-### 1.2 Docker Container
+==== 1.2 Docker Container
 
 Provide OCI container for easy deployment:
 
-```dockerfile
+[source,dockerfile]
+----
 # Dockerfile
 FROM haskell:9.6-slim AS builder
 WORKDIR /build
@@ -118,26 +138,28 @@ RUN cp $(cabal list-bin sanctify-php) /sanctify-php
 FROM gcr.io/distroless/static-debian12
 COPY --from=builder /sanctify-php /usr/local/bin/sanctify-php
 ENTRYPOINT ["sanctify-php"]
-```
+----
 
-**Usage**:
-```bash
+*Usage*:
+
+[source,bash]
+----
 # Analyze a project
 docker run --rm -v $(pwd):/src ghcr.io/hyperpolymath/sanctify-php analyze /src
 
 # Generate report
 docker run --rm -v $(pwd):/src ghcr.io/hyperpolymath/sanctify-php report /src --format=sarif
-```
+----
 
-### 1.3 Composer Plugin Wrapper (Critical Path)
+==== 1.3 Composer Plugin Wrapper (Critical Path)
 
-PHP developers expect `composer require`. Provide a Composer plugin that:
-1. Detects platform (OS/arch)
-2. Downloads the appropriate pre-built binary
-3. Provides Composer scripts integration
+PHP developers expect `+composer require+`. Provide a Composer plugin
+that: 1. Detects platform (OS/arch) 2. Downloads the appropriate
+pre-built binary 3. Provides Composer scripts integration
 
-**Package Structure**:
-```
+*Package Structure*:
+
+....
 sanctify-php-composer/
 ├── composer.json
 ├── src/
@@ -146,10 +168,12 @@ sanctify-php-composer/
 │   └── ScriptHandler.php    # Composer scripts integration
 └── bin/
     └── sanctify-php         # Wrapper script
-```
+....
 
-**composer.json**:
-```json
+*composer.json*:
+
+[source,json]
+----
 {
     "name": "hyperpolymath/sanctify-php",
     "description": "PHP security analysis and hardening tool",
@@ -179,10 +203,12 @@ sanctify-php-composer/
     },
     "bin": ["bin/sanctify-php"]
 }
-```
+----
 
-**BinaryInstaller.php**:
-```php
+*BinaryInstaller.php*:
+
+[source,php]
+----
 <?php
 declare(strict_types=1);
 // SPDX-License-Identifier: CC-BY-SA-4.0
@@ -228,10 +254,12 @@ final class BinaryInstaller
         file_put_contents($dest, $binary);
     }
 }
-```
+----
 
-**Usage after installation**:
-```bash
+*Usage after installation*:
+
+[source,bash]
+----
 # Install
 composer require --dev hyperpolymath/sanctify-php
 
@@ -242,13 +270,14 @@ composer sanctify:report src/ -- --format=sarif
 
 # Or directly
 vendor/bin/sanctify-php analyze src/
-```
+----
 
-### 1.4 GitHub Action
+==== 1.4 GitHub Action
 
 Official GitHub Action for CI/CD:
 
-```yaml
+[source,yaml]
+----
 # .github/actions/sanctify-php/action.yml
 name: 'Sanctify PHP'
 description: 'PHP security analysis and hardening'
@@ -304,10 +333,12 @@ runs:
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: sanctify-results.sarif
-```
+----
 
-**Usage in workflows**:
-```yaml
+*Usage in workflows*:
+
+[source,yaml]
+----
 name: Security
 on: [push, pull_request]
 
@@ -320,13 +351,14 @@ jobs:
         with:
           path: src/
           fail-on: high
-```
+----
 
-### 1.5 Incremental Analysis
+==== 1.5 Incremental Analysis
 
 Cache analysis results and only rescan changed files:
 
-```haskell
+[source,haskell]
+----
 -- src/Sanctify/Cache.hs
 -- SPDX-License-Identifier: CC-BY-SA-4.0
 
@@ -355,10 +387,12 @@ getChangedFiles cache files = do
     hasChanged c f = do
       currentHash <- hashFile f
       pure $ Map.lookup f (fileHashes c) /= Just currentHash
-```
+----
 
-**CLI usage**:
-```bash
+*CLI usage*:
+
+[source,bash]
+----
 # First run: full analysis, creates .sanctify-cache.json
 sanctify-php analyze src/
 
@@ -367,13 +401,14 @@ sanctify-php analyze src/ --incremental
 
 # Force full rescan
 sanctify-php analyze src/ --no-cache
-```
+----
 
-### 1.6 Guix Package
+==== 1.6 Guix Package
 
 Proper Guix package definition for reproducible builds:
 
-```scheme
+[source,scheme]
+----
 ;; guix.scm - enhanced for distribution
 (define-public sanctify-php
   (package
@@ -392,19 +427,20 @@ Proper Guix package definition for reproducible builds:
 transforms PHP code for security compliance.")
     (license (list license:expat license:agpl3+))
     (home-page "https://github.com/hyperpolymath/sanctify-php")))
-```
+----
 
----
+'''''
 
-## Phase 2: Semantic Web Support
+=== Phase 2: Semantic Web Support
 
-**Goal**: First-class support for RDF/Turtle/JSON-LD output contexts
+*Goal*: First-class support for RDF/Turtle/JSON-LD output contexts
 
-### 2.1 Semantic Output Detection
+==== 2.1 Semantic Output Detection
 
 Add detection for semantic web output patterns:
 
-```haskell
+[source,haskell]
+----
 -- src/Sanctify/Analysis/Semantic.hs
 -- SPDX-License-Identifier: CC-BY-SA-4.0
 
@@ -443,13 +479,14 @@ detectSemanticContext stmt = case stmt of
     | "\"@context\"" `isInfixOf` template -> Just JsonLdContext
 
   _ -> Nothing
-```
+----
 
-### 2.2 Semantic-Aware Taint Sinks
+==== 2.2 Semantic-Aware Taint Sinks
 
 Extend taint analysis with semantic sinks:
 
-```haskell
+[source,haskell]
+----
 -- In Sanctify.Analysis.Taint
 
 data SemanticSink
@@ -477,13 +514,14 @@ semanticSinkEscaping = \case
     [ "Aegis\\Semantic\\JsonLd::validateIRI"
     , "filter_var" -- with FILTER_VALIDATE_URL
     ]
-```
+----
 
-### 2.3 WordPress Semantic Theme Detection
+==== 2.3 WordPress Semantic Theme Detection
 
 Detect semantic WordPress themes:
 
-```haskell
+[source,haskell]
+----
 -- In Sanctify.WordPress.Constraints
 
 data ThemeType
@@ -505,35 +543,38 @@ detectThemeType files = do
     (True, False) -> SemanticTheme
     (False, True) -> IndieWebTheme
     _             -> StandardTheme
-```
+----
 
----
+'''''
 
-## Phase 3: PHP 8.x Syntax Completeness
+=== Phase 3: PHP 8.x Syntax Completeness
 
-**Goal**: Full support for PHP 8.0-8.4 syntax
+*Goal*: Full support for PHP 8.0-8.4 syntax
 
-### 3.1 Parser Enhancements
+==== 3.1 Parser Enhancements
 
-| Feature | PHP Version | Status | Priority |
-|---------|-------------|--------|----------|
-| Named arguments | 8.0 | ✅ Parsed | - |
-| Match expressions | 8.0 | ✅ AST ready | Medium |
-| Union types | 8.0 | ✅ Supported | - |
-| Nullsafe operator `?->` | 8.0 | ⚠️ Partial | High |
-| Constructor promotion | 8.0 | ✅ Supported | - |
-| Intersection types | 8.1 | ✅ Supported | - |
-| Readonly properties | 8.1 | ✅ Supported | - |
-| Enums | 8.1 | ⚠️ Partial | High |
-| First-class callables | 8.1 | ❌ Missing | Medium |
-| Readonly classes | 8.2 | ❌ Missing | Medium |
-| DNF types | 8.2 | ❌ Missing | Low |
-| `#[\Override]` attribute | 8.3 | ❌ Missing | Low |
-| Typed class constants | 8.3 | ❌ Missing | Medium |
+[cols=",,,",options="header",]
+|===
+|Feature |PHP Version |Status |Priority
+|Named arguments |8.0 |✅ Parsed |-
+|Match expressions |8.0 |✅ AST ready |Medium
+|Union types |8.0 |✅ Supported |-
+|Nullsafe operator `+?->+` |8.0 |⚠️ Partial |High
+|Constructor promotion |8.0 |✅ Supported |-
+|Intersection types |8.1 |✅ Supported |-
+|Readonly properties |8.1 |✅ Supported |-
+|Enums |8.1 |⚠️ Partial |High
+|First-class callables |8.1 |❌ Missing |Medium
+|Readonly classes |8.2 |❌ Missing |Medium
+|DNF types |8.2 |❌ Missing |Low
+|`+#[\Override]+` attribute |8.3 |❌ Missing |Low
+|Typed class constants |8.3 |❌ Missing |Medium
+|===
 
-### 3.2 Enum Support
+==== 3.2 Enum Support
 
-```haskell
+[source,haskell]
+----
 -- Extend AST for PHP 8.1 enums
 data EnumDeclaration = EnumDeclaration
   { enumName :: Text
@@ -549,11 +590,12 @@ data EnumCase = EnumCase
   , caseValue :: Maybe Expression  -- For backed enums
   }
   deriving (Eq, Show, Generic)
-```
+----
 
-### 3.3 Nullsafe Operator
+==== 3.3 Nullsafe Operator
 
-```haskell
+[source,haskell]
+----
 -- Add nullsafe property access
 data Expression
   = ...
@@ -562,19 +604,20 @@ data Expression
   | MethodCall Expression Text [Argument]
   | NullsafeMethodCall Expression Text [Argument]  -- $obj?->method()
   ...
-```
+----
 
----
+'''''
 
-## Phase 4: WordPress Integration
+=== Phase 4: WordPress Integration
 
-**Goal**: Comprehensive WordPress integration documentation and tooling
+*Goal*: Comprehensive WordPress integration documentation and tooling
 
-### 4.1 WordPress Integration Guide
+==== 4.1 WordPress Integration Guide
 
-Create `docs/WORDPRESS.md`:
+Create `+docs/WORDPRESS.md+`:
 
-```markdown
+[source,markdown]
+----
 # WordPress Integration Guide
 
 ## Quick Start
@@ -635,13 +678,14 @@ Create `sanctify.json` in theme root:
   }
 }
 \`\`\`
-```
+----
 
-### 4.2 GitHub Action
+==== 4.2 GitHub Action
 
 Create reusable GitHub Action:
 
-```yaml
+[source,yaml]
+----
 # action.yml
 name: 'Sanctify PHP'
 description: 'PHP security analysis and hardening'
@@ -662,13 +706,14 @@ runs:
     - analyze
     - ${{ inputs.path }}
     - --format=${{ inputs.format }}
-```
+----
 
-### 4.3 Composer Integration
+==== 4.3 Composer Integration
 
 For projects using Composer:
 
-```json
+[source,json]
+----
 {
   "scripts": {
     "security:analyze": "sanctify-php analyze ./src",
@@ -676,17 +721,18 @@ For projects using Composer:
     "security:report": "sanctify-php report ./src --format=html -o security-report.html"
   }
 }
-```
+----
 
----
+'''''
 
-## Phase 5: php-aegis Integration
+=== Phase 5: php-aegis Integration
 
-**Goal**: Seamless integration with php-aegis runtime library
+*Goal*: Seamless integration with php-aegis runtime library
 
-### 5.1 Recognize php-aegis as Safe
+==== 5.1 Recognize php-aegis as Safe
 
-```haskell
+[source,haskell]
+----
 -- Add php-aegis functions to safe function registry
 aegisSafeFunctions :: Map Text SafetyLevel
 aegisSafeFunctions = Map.fromList
@@ -698,13 +744,14 @@ aegisSafeFunctions = Map.fromList
   , ("Aegis\\Semantic\\Turtle::escapeIRI", SafeForTurtleIRI)
   , ("Aegis\\IndieWeb\\Micropub::sanitizeContent", SafeForHtml)
   ]
-```
+----
 
-### 5.2 Auto-Insert php-aegis Calls
+==== 5.2 Auto-Insert php-aegis Calls
 
 Transform detected vulnerabilities to use php-aegis:
 
-```haskell
+[source,haskell]
+----
 -- In Sanctify.Transform.Sanitize
 
 insertAegisEscaping :: TaintedSink -> Expression -> Expression
@@ -722,45 +769,49 @@ insertAegisEscaping sink expr = case sink of
     FunctionCall "\\Aegis\\IndieWeb\\Micropub::sanitizeContent" [expr]
 
   _ -> expr  -- Fallback to WordPress functions
-```
+----
 
-### 5.3 Configuration Option
+==== 5.3 Configuration Option
 
-```json
+[source,json]
+----
 {
   "transforms": {
     "escaping_library": "php-aegis",  // or "wordpress" or "custom"
     "fallback_to_wordpress": true
   }
 }
-```
+----
 
----
+'''''
 
-## Timeline & Milestones
+=== Timeline & Milestones
 
-| Phase | Focus | Target Version |
-|-------|-------|----------------|
-| Phase 1 | Distribution | v0.2.0 |
-| Phase 2 | Semantic Web | v0.3.0 |
-| Phase 3 | PHP 8.x Complete | v0.4.0 |
-| Phase 4 | WordPress Integration | v0.5.0 |
-| Phase 5 | php-aegis Integration | v1.0.0 |
+[cols=",,",options="header",]
+|===
+|Phase |Focus |Target Version
+|Phase 1 |Distribution |v0.2.0
+|Phase 2 |Semantic Web |v0.3.0
+|Phase 3 |PHP 8.x Complete |v0.4.0
+|Phase 4 |WordPress Integration |v0.5.0
+|Phase 5 |php-aegis Integration |v1.0.0
+|===
 
----
+'''''
 
-## Contributing
+=== Contributing
 
 We welcome contributions! Priority areas:
 
-1. **Distribution**: CI/CD for binary releases
-2. **Parser**: PHP 8.1+ enum support
-3. **Semantic**: RDF/Turtle detection and escaping rules
-4. **Documentation**: WordPress integration examples
+[arabic]
+. *Distribution*: CI/CD for binary releases
+. *Parser*: PHP 8.1+ enum support
+. *Semantic*: RDF/Turtle detection and escaping rules
+. *Documentation*: WordPress integration examples
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+See link:./CONTRIBUTING.md[CONTRIBUTING.md] for guidelines.
 
----
+'''''
 
-*SPDX-License-Identifier: CC-BY-SA-4.0
-*SPDX-FileCopyrightText: 2024-2025 hyperpolymath*
+__SPDX-License-Identifier: CC-BY-SA-4.0 __SPDX-FileCopyrightText:
+2024-2025 hyperpolymath*
