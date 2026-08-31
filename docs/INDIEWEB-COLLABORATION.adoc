@@ -1,36 +1,47 @@
-# IndieWeb Security: Cross-Project Collaboration
+== IndieWeb Security: Cross-Project Collaboration
 
-This document outlines how `indieweb2-bastion`, `php-aegis`, and `sanctify-php` can work together to provide comprehensive IndieWeb security at both infrastructure and application layers.
+This document outlines how `+indieweb2-bastion+`, `+php-aegis+`, and
+`+sanctify-php+` can work together to provide comprehensive IndieWeb
+security at both infrastructure and application layers.
 
----
+'''''
 
-## The IndieWeb Security Gap
+=== The IndieWeb Security Gap
 
-IndieWeb protocols (Micropub, Webmention, IndieAuth, Microsub) have **no dedicated security libraries**. Current state:
+IndieWeb protocols (Micropub, Webmention, IndieAuth, Microsub) have *no
+dedicated security libraries*. Current state:
 
-| Protocol | Security Needs | Current Solutions | Gap |
-|----------|---------------|-------------------|-----|
-| **Micropub** | Content sanitization, auth verification | WordPress `wp_kses_post()` | No protocol-specific sanitization |
-| **Webmention** | Rate limiting, source validation | Manual implementation | No standard library |
-| **IndieAuth** | Token verification, scope validation | Various implementations | No unified validation |
-| **Microsub** | Feed sanitization, auth | Minimal | Almost nothing |
+[width="100%",cols="22%,30%,38%,10%",options="header",]
+|===
+|Protocol |Security Needs |Current Solutions |Gap
+|*Micropub* |Content sanitization, auth verification |WordPress
+`+wp_kses_post()+` |No protocol-specific sanitization
 
-### Real Vulnerabilities Found
+|*Webmention* |Rate limiting, source validation |Manual implementation
+|No standard library
+
+|*IndieAuth* |Token verification, scope validation |Various
+implementations |No unified validation
+
+|*Microsub* |Feed sanitization, auth |Minimal |Almost nothing
+|===
+
+==== Real Vulnerabilities Found
 
 From the Sinople integration:
 
-```
+....
 CRITICAL: addslashes() used for Turtle escaping → RDF injection
 HIGH: URL validation via strpos() → Bypass possible
 HIGH: Unsanitized Micropub input → XSS in content
 MEDIUM: No Webmention rate limiting → DoS vector
-```
+....
 
----
+'''''
 
-## Three-Layer Security Model
+=== Three-Layer Security Model
 
-```
+....
 ┌─────────────────────────────────────────────────────────────────┐
 │                    indieweb2-bastion                             │
 │                  (Infrastructure Layer)                          │
@@ -63,17 +74,18 @@ MEDIUM: No Webmention rate limiting → DoS vector
 │  • Warn on incorrect escaping context (HTML vs Turtle)          │
 │  • CI/CD integration for security gates                          │
 └─────────────────────────────────────────────────────────────────┘
-```
+....
 
----
+'''''
 
-## Proposed indieweb2-bastion Enhancements
+=== Proposed indieweb2-bastion Enhancements
 
-### 1. IndieWeb Protocol Detection
+==== 1. IndieWeb Protocol Detection
 
 Add protocol-aware ingress rules:
 
-```nickel
+[source,nickel]
+----
 # indieweb-protocols.ncl
 let IndieWebProtocol = {
   micropub = {
@@ -117,13 +129,14 @@ let IndieWebProtocol = {
   },
 }
 in IndieWebProtocol
-```
+----
 
-### 2. Webmention Source Validation at Ingress
+==== 2. Webmention Source Validation at Ingress
 
 Block obviously malicious Webmentions before they reach the application:
 
-```nickel
+[source,nickel]
+----
 # webmention-validation.ncl
 let WebmentionPolicy = {
   # Block private/local IPs as source
@@ -149,13 +162,14 @@ let WebmentionPolicy = {
   max_url_length = 2048,
 }
 in WebmentionPolicy
-```
+----
 
-### 3. Micropub Request Validation
+==== 3. Micropub Request Validation
 
 Validate Micropub requests at the gateway:
 
-```nickel
+[source,nickel]
+----
 # micropub-validation.ncl
 let MicropubPolicy = {
   # Required: Bearer token in Authorization header
@@ -180,13 +194,14 @@ let MicropubPolicy = {
   },
 }
 in MicropubPolicy
-```
+----
 
-### 4. IndieAuth Token Introspection Cache
+==== 4. IndieAuth Token Introspection Cache
 
 Cache token introspection results to reduce auth server load:
 
-```nickel
+[source,nickel]
+----
 # indieauth-cache.ncl
 let IndieAuthCache = {
   # Cache valid tokens
@@ -209,13 +224,14 @@ let IndieAuthCache = {
   },
 }
 in IndieAuthCache
-```
+----
 
-### 5. Provenance Tracking for IndieWeb
+==== 5. Provenance Tracking for IndieWeb
 
 Track the origin and flow of IndieWeb requests:
 
-```surql
+[source,surql]
+----
 -- SurrealDB schema for IndieWeb provenance
 
 DEFINE TABLE webmention_provenance SCHEMAFULL;
@@ -240,17 +256,19 @@ DEFINE TABLE caused_by SCHEMAFULL;
 DEFINE FIELD in ON caused_by TYPE record;
 DEFINE FIELD out ON caused_by TYPE record;
 DEFINE FIELD relationship ON caused_by TYPE string;
-```
+----
 
----
+'''''
 
-## Integration with php-aegis
+=== Integration with php-aegis
 
-indieweb2-bastion provides infrastructure-level protection; php-aegis handles application-level security:
+indieweb2-bastion provides infrastructure-level protection; php-aegis
+handles application-level security:
 
-### Shared Configuration
+==== Shared Configuration
 
-```json
+[source,json]
+----
 {
   "indieweb_security": {
     "bastion": {
@@ -265,23 +283,25 @@ indieweb2-bastion provides infrastructure-level protection; php-aegis handles ap
     }
   }
 }
-```
+----
 
-### Header Passthrough
+==== Header Passthrough
 
-When bastion validates a request, it adds headers that php-aegis can trust:
+When bastion validates a request, it adds headers that php-aegis can
+trust:
 
-```
+....
 X-Bastion-Verified: true
 X-Bastion-Protocol: micropub
 X-Bastion-Rate-Limit-Remaining: 45
 X-Bastion-Source-Validated: true
 X-Bastion-Request-ID: uuid-for-provenance
-```
+....
 
-### php-aegis IndieWeb Module
+==== php-aegis IndieWeb Module
 
-```php
+[source,php]
+----
 <?php
 declare(strict_types=1);
 // SPDX-License-Identifier: CC-BY-SA-4.0
@@ -339,17 +359,18 @@ final class Webmention
         return true;
     }
 }
-```
+----
 
----
+'''''
 
-## Integration with sanctify-php
+=== Integration with sanctify-php
 
 sanctify-php detects missing IndieWeb security patterns:
 
-### IndieWeb-Aware Analysis
+==== IndieWeb-Aware Analysis
 
-```haskell
+[source,haskell]
+----
 -- src/Sanctify/IndieWeb/Analysis.hs
 -- SPDX-License-Identifier: CC-BY-SA-4.0
 
@@ -382,13 +403,14 @@ checkBastionIntegration :: Endpoint -> [SecurityIssue]
 checkBastionIntegration endpoint
   | usesBastionHeaders endpoint = []
   | otherwise = [Advisory "Consider trusting X-Bastion-Verified for defense in depth"]
-```
+----
 
----
+'''''
 
-## Issue Template for indieweb2-bastion
+=== Issue Template for indieweb2-bastion
 
-```markdown
+[source,markdown]
+----
 ## Feature Request: IndieWeb Protocol Support
 
 ### Summary
@@ -434,40 +456,54 @@ protection provides defense in depth and reduces load on applications.
 
 ### Reference
 See: hyperpolymath/sanctify-php/docs/INDIEWEB-COLLABORATION.md
-```
+----
 
----
+'''''
 
-## Lessons Exchanged
+=== Lessons Exchanged
 
-### FROM indieweb2-bastion TO php-aegis/sanctify-php
+==== FROM indieweb2-bastion TO php-aegis/sanctify-php
 
-| Concept | Application |
-|---------|-------------|
-| **Nickel contracts** | Define security policies declaratively for sanctify-php |
-| **Provenance graphs** | Track sanitization chain (who sanitized what, when) |
-| **Consent-aware** | IndieWeb is about user control - reflect in API design |
-| **Rate limiting patterns** | Apply at application level as fallback |
+[width="100%",cols="41%,59%",options="header",]
+|===
+|Concept |Application
+|*Nickel contracts* |Define security policies declaratively for
+sanctify-php
 
-### TO indieweb2-bastion FROM php-aegis/sanctify-php
+|*Provenance graphs* |Track sanitization chain (who sanitized what,
+when)
 
-| Finding | Recommendation |
-|---------|---------------|
-| **Turtle escaping gap** | Validate Content-Type for /feed/turtle endpoints |
-| **Webmention abuse** | Add source validation at ingress |
-| **Micropub content** | Block dangerous HTML elements before application |
-| **Real vulnerability found** | addslashes() misuse - validate escaping context |
+|*Consent-aware* |IndieWeb is about user control - reflect in API design
 
----
+|*Rate limiting patterns* |Apply at application level as fallback
+|===
 
-## Next Steps
+==== TO indieweb2-bastion FROM php-aegis/sanctify-php
 
-1. **Open issue on indieweb2-bastion** with the template above
-2. **Create shared Nickel contracts** for IndieWeb security policies
-3. **Add bastion header support** to php-aegis IndieWeb module
-4. **Extend sanctify-php** to detect bastion integration
+[width="100%",cols="38%,62%",options="header",]
+|===
+|Finding |Recommendation
+|*Turtle escaping gap* |Validate Content-Type for /feed/turtle endpoints
 
----
+|*Webmention abuse* |Add source validation at ingress
 
-*SPDX-License-Identifier: CC-BY-SA-4.0
-*SPDX-FileCopyrightText: 2024-2025 hyperpolymath*
+|*Micropub content* |Block dangerous HTML elements before application
+
+|*Real vulnerability found* |addslashes() misuse - validate escaping
+context
+|===
+
+'''''
+
+=== Next Steps
+
+[arabic]
+. *Open issue on indieweb2-bastion* with the template above
+. *Create shared Nickel contracts* for IndieWeb security policies
+. *Add bastion header support* to php-aegis IndieWeb module
+. *Extend sanctify-php* to detect bastion integration
+
+'''''
+
+__SPDX-License-Identifier: CC-BY-SA-4.0 __SPDX-FileCopyrightText:
+2024-2025 hyperpolymath*
