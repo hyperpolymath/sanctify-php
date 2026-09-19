@@ -452,7 +452,7 @@ sudo apt-get install libgmp-dev libffi-dev zlib1g-dev
 * Read the full documentation: link:docs/USER-GUIDE.adoc[User Guide]
 * Explore advanced features: link:docs/ADVANCED.adoc[Advanced Usage]
 * Learn about WordPress integration: link:docs/WORDPRESS.adoc[WordPress Guide]
-* Contribute to development: link:CONTRIBUTING.adoc[Contributing Guide]
+* Contribute to development: link:.github/CONTRIBUTING.md[Contributing Guide]
 * Report issues: https://github.com/hyperpolymath/sanctify-php/issues
 
 == Support
