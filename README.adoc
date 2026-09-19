@@ -51,7 +51,7 @@ cabal install
 nix build
 
 # Using Guix
-guix build -f guix.scm
+guix build -f build/guix.scm
 ----
 
 == Usage
