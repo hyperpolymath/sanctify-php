@@ -4,7 +4,6 @@
 = Sanctify-PHP
 
 image:https://img.shields.io/badge/License-MPL--2.0-blue.svg[License: MPL-2.0,link="https://www.mozilla.org/MPL/2.0/"]
-image:https://img.shields.io/badge/Philosophy-Palimpsest-indigo.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-license"]
 
 
 :author: Jonathan D.A. Jewell
@@ -161,7 +160,9 @@ sanctify export --guix ./project/ | aegis apply
 
 == License
 
-PMPL-1.0-or-later
+Code is licensed under the Mozilla Public License 2.0 (`MPL-2.0`); see link:LICENSE[LICENSE].
+Documentation and other prose are licensed under Creative Commons Attribution-ShareAlike 4.0
+(`CC-BY-SA-4.0`); see link:LICENSES/CC-BY-SA-4.0.txt[LICENSES/CC-BY-SA-4.0.txt].
 
 == Related Projects
 

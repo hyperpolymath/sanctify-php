@@ -7,7 +7,7 @@
     dcterms:title "sanctify-php" ;
     dcterms:description "Haskell-based PHP security analysis with taint tracking" ;
     dcterms:creator <https://github.com/hyperpolymath> ;
-    dcterms:license <https://www.gnu.org/licenses/agpl-3.0> ;
+    dcterms:license <https://www.mozilla.org/MPL/2.0/> ;
     dcterms:subject <http://dbpedia.org/resource/Static_program_analysis> ;
     dcterms:subject <http://dbpedia.org/resource/PHP> ;
     dcterms:subject <http://dbpedia.org/resource/Haskell> ;

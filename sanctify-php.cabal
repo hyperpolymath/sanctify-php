@@ -12,7 +12,7 @@ description:
     * Multiple output formats (text, JSON, SARIF, HTML)
     * Interactive fix mode and watch mode for development
     * Infrastructure export (php.ini, nginx, Guix/Nix)
-license:            LicenseRef-PMPL-1.0-or-later
+license:            MPL-2.0
 license-file:       LICENSE
 author:             Jonathan D.A. Jewell
 maintainer:         j.d.a.jewell@open.ac.uk

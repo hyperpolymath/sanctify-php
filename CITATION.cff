@@ -21,6 +21,6 @@ keywords:
   - haskell
   - taint-tracking
   - wordpress
-license: PMPL-1.0-or-later
+license: MPL-2.0
 version: "0.1.0"
 date-released: "2025-01-03"
