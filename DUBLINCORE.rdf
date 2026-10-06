@@ -16,8 +16,8 @@
     <dc:format>application/x-haskell</dc:format>
     <dc:identifier>https://github.com/hyperpolymath/sanctify-php</dc:identifier>
     <dc:language>en</dc:language>
-    <dc:rights>PMPL-1.0-or-later</dc:rights>
-    <dcterms:license rdf:resource="https://www.gnu.org/licenses/agpl-3.0"/>
+    <dc:rights>MPL-2.0 (code); CC-BY-SA-4.0 (documentation)</dc:rights>
+    <dcterms:license rdf:resource="https://www.mozilla.org/MPL/2.0/"/>
     <dcterms:conformsTo rdf:resource="https://github.com/hyperpolymath/rhodium-standard-repositories"/>
   </rdf:Description>
 </rdf:RDF>

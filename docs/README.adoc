@@ -199,7 +199,7 @@ sanctify export-php-ini wp-content/plugins/my-plugin/ \
 
 == License
 
-Sanctify-PHP is licensed under the PMPL-1.0-or-later license.
+Sanctify-PHP code is licensed under MPL-2.0; its documentation under CC-BY-SA-4.0.
 
 See link:../LICENSE[LICENSE] for details.
 

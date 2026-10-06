@@ -425,7 +425,7 @@ Proper Guix package definition for reproducible builds:
     (synopsis "PHP security hardening and analysis tool")
     (description "Static analyzer that detects vulnerabilities and
 transforms PHP code for security compliance.")
-    (license (list license:expat license:agpl3+))
+    (license license:mpl2.0)
     (home-page "https://github.com/hyperpolymath/sanctify-php")))
 ----
 

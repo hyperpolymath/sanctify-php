@@ -254,4 +254,4 @@ We welcome contributions to improve accessibility. See our link:../../.github/CO
 
 == License
 
-This document is licensed under PMPL-1.0-or-later. See link:../../LICENSE[LICENSE] for details.
+This document is licensed under CC-BY-SA-4.0. See link:../../LICENSES/CC-BY-SA-4.0.txt[LICENSES/CC-BY-SA-4.0.txt] for details.
