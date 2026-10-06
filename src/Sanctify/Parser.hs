@@ -3,7 +3,7 @@
 -- This module implements a high-assurance parser for PHP source code. 
 -- It is designed to be the foundational layer for `sanctify-php`, 
 -- allowing for the transformation of untrusted PHP code into safe, 
-//! verified alternatives.
+-- verified alternatives.
 --
 -- SPDX-License-Identifier: MPL-2.0
 
