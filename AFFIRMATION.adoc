@@ -1,0 +1,271 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= AFFIRMATION — sanctify-php, as of 2026-10-07
+:toc: macro
+:toclevels: 2
+:icons: font
+:std-docs: https://github.com/hyperpolymath/standards/blob/main/docs
+:status: DRAFT — agent-authored, NOT affirmed by the owner until the owner's signed commit lands it
+
+_the No-Bullshit file: what we affirm was true and checkable at this moment._
+
+[NOTE]
+====
+Profile A (evidential) of the
+link:{std-docs}/AFFIRMATION-STANDARD.adoc[AFFIRMATION authoring standard].
+README says where this is going; EXPLAINME says how it is built; this file says
+what was *true and checkable* at one commit. It is the first affirmation for
+this repository.
+====
+
+toc::[]
+
+== What this is, and how it works
+
+*What it is.* A dated, signed snapshot of what can honestly be claimed about
+*sanctify-php* at the commit in <<verifiable-anchor>>. It is a receipt, not a
+roadmap.
+
+*What the project is.* A Haskell tool intended to harden PHP source: add
+`declare(strict_types=1)`, infer type hints, track taint, detect SQLi, XSS,
+CSRF and command injection, enforce WordPress rules, and report as JSON or
+SARIF. That is the README's intended surface. This file reports how much of it
+was checkable at the anchor, which is very little, because the library does
+not compile.
+
+*How it stays trustworthy.* Every claim below was produced by a command run in
+the session that wrote this file, or is a CI run named by its run ID and marked
+as CI evidence. The anchor is a full SHA. The file is landed by a signed commit.
+
+*We are fallible.* This is our best honest belief, not a proof of its own
+correctness.
+
+== The epistemic contract (read this before you trust _or_ attack)
+
+This file records the *best belief* at the timestamp below. The only guarantee
+is *no intentional overclaim*.
+
+You may conclude:
+
+* Each claim was checked as described, at the anchor SHA.
+* Where a status document disagrees with a check, the check wins and the
+  document is named as stale below.
+
+You may *not* conclude:
+
+* That anything is true at a later commit.
+* That unlisted things pass. *Silence is not a claim.*
+
+*Standing invitation to refute.* Bring a failing run or a counter-example.
+
+[#verifiable-anchor]
+== Verifiable anchor
+
+[cols="1,3",options="header"]
+|===
+| Field | Value
+
+| Project
+| sanctify-php
+
+| Repo
+| `hyperpolymath/sanctify-php`
+
+| Branch
+| `main`
+
+| Commit (HEAD)
+| `d7634557f35c330ca97c2ccb1fa997d4506b84f2`
+
+| Permalink
+| https://github.com/hyperpolymath/sanctify-php/tree/d7634557f35c330ca97c2ccb1fa997d4506b84f2
+
+| Verified (UTC)
+| `2026-10-07T10:22:34Z` (local checks), CI evidence from run
+  `37603063882` on the same SHA
+
+| Working-tree delta at verification
+| `clean` (fresh worktree at the anchor). The commit that lands this file adds
+  only `AFFIRMATION.adoc`; no code changes.
+
+| Toolchain
+| Local: GNU grep/coreutils on Debian 13; `ghc` 9.6.6 present, but `cabal` and
+  the package's Hackage dependencies (`megaparsec` and others) are *not*
+  installed, so the package was *not* built locally. CI: GHC 9.8.2 with cabal
+  (run `37603063882`, job `build`).
+
+| Affirmed by
+| Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk> (pending, see
+  <<joint-attestation>>)
+|===
+
+[IMPORTANT]
+====
+*Never anchor to a tag.* If you are reading this at a later commit, the claims
+may have drifted. Re-run <<reproduce>> and write a fresh affirmation; do not
+trust a stale one.
+====
+
+== Companion documents and repo metadata (cross-check)
+
+These disagree with this file. *This file wins* on every point below, because
+each point was checked.
+
+* `PROGRESS-SUMMARY.adoc` says "93% Complete", "Production Ready" and
+  "Parser (100%): Complete PHP 8.2+ parser". *Refuted*: the parser module does
+  not compile (<<outstanding>>). Treat that document as stale.
+* `README.adoc` says, correctly, that it "describes the intended capability
+  surface" and is not proof. Its header carries both an MPL-2.0 and a
+  CC-BY-SA-4.0 SPDX line, and an MPL-2.0 badge. The owner's ruling (#110) is
+  MPL-2.0 for code and CC-BY-SA-4.0 for prose, so the README, being prose,
+  should carry only the CC-BY-SA-4.0 line.
+* `0-AI-MANIFEST.a2ml` and 18 other `.a2ml` files remain in the tree. A2ML is
+  retired estate-wide (deed replaces it). They are stale metadata, not
+  evidence.
+* `TEST-NEEDS.adoc`, `PROOF-NEEDS.adoc` and `ROADMAP.adoc` describe gaps
+  honestly and agree with this file.
+* GitHub repository description (set 2026-10-07) lists the intended
+  capabilities and ends "Research/beta".
+
+== The honest state (one breath)
+
+The tree holds about 6,100 lines of Haskell in 20 modules, plus a test suite
+of 109 `it` cases. *The library does not compile at this SHA*: the parser
+module calls eight helpers that are defined nowhere, one import names an
+unexported function, and one function is declared twice. So no analysis,
+transform or test in this repository has been executed end to end. Licence
+metadata and most governance gates are consistent and green.
+
+=== What is solid (and how we checked)
+
+[cols="2,1,3",options="header"]
+|===
+| Claim | Status | Evidence (command, and what it printed)
+
+| Code licence is MPL-2.0, consistently
+| affirmed
+| `grep -n '^license' sanctify-php.cabal` prints `license: MPL-2.0`;
+  `head -1 LICENSE` prints `Mozilla Public License Version 2.0`; `ls LICENSES`
+  prints `CC-BY-SA-4.0.txt MPL-2.0.txt`. CI `governance / Licence consistency`
+  is green at the anchor.
+
+| Source size: 20 Haskell modules, about 6,100 lines
+| affirmed
+| `find src -name '*.hs' \| wc -l` prints `20`;
+  `find src -name '*.hs' -exec cat {} + \| wc -l` prints `6134`
+
+| The test suite declares 109 `it` cases
+| affirmed (declared only)
+| `cat test/*.hs \| grep -cE '^\s+it "'` prints `109`. None were executed;
+  see <<outstanding>>.
+
+| Most CI gates are green at the anchor
+| affirmed (CI evidence)
+| Check runs on the anchor SHA: governance licence, security policy, code
+  quality, Guix policy, workflow linter, hypatia, secret scanners and CodeQL
+  (`analyze (actions, none)`) report `success`
+|===
+
+=== The honest nuance you must not lose
+
+* "CodeQL green" covers the *workflow files only* (`analyze (actions, none)`).
+  No Haskell code is analysed by CodeQL.
+* "109 test cases" is a count of declarations. A suite that cannot compile has
+  not tested anything.
+* The README's feature list is aspiration. None of it is affirmed here.
+
+=== Known-incomplete but honestly fenced
+
+* Every analysis and transform is fenced by the compile failure itself: the
+  tool cannot run, so it cannot give a wrong security verdict silently. The
+  `Haskell CI` workflow fails loudly on `main`.
+
+[#outstanding]
+=== Outstanding / weak / refuted (no spin)
+
+*Refuted at this SHA: "the parser is complete".* The library does not build.
+CI run `37603063882` (GHC 9.8.2) stops with 11 errors. Each was re-checked
+locally against the source:
+
+[cols="2,3",options="header"]
+|===
+| Defect | Local check (and what it printed)
+
+| `src/Sanctify/Parser.hs` uses `symbol`, `declareStrictP`, `namespaceP`,
+  `useP`, `toSourcePos`, `ifP`, `whileP`, `exprStmtP`, which are defined
+  nowhere
+| `grep -rnE "^<name>( \|::)" src \| wc -l` prints `0` for each of the eight
+  names. `statementP` contains the placeholder comment
+  `-- ... [Routes to Try/Catch, Return, Echo, etc.]`.
+
+| `src/Sanctify/Transform/Sanitize.hs:33` imports `isWpdbObject`, which
+  `Sanctify.WordPress.Constraints` does not export
+| The module's export list contains no `isWpdbObject` (count `0`).
+
+| `transformAddTypeHints` is declared twice
+| `grep -nE '^transformAddTypeHints' src/Sanctify/Transform/TypeHints.hs`
+  prints lines 262/263 and 266/267.
+|===
+
+*Also outstanding at this SHA:*
+
+* `governance / Actions lockfile verify` is red. Dependabot #112 bumped
+  `hyperpolymath/smtp-notify-action` to v0.5.0 (`c1c9fa07…`) in
+  `push-email-notify.yml`, but `.github/workflows/actions.lock` still records
+  v0.3.0 (`22e7bdb3…`).
+* Mirror jobs to Gitea, Disroot, Codeberg and Bitbucket fail (forge-side
+  cause not re-checked in this session).
+* `instant-sync`, `pages` and `push-email-notify` are `disabled_manually`
+  (`gh workflow list --all`) and were not evaluated.
+* No proof obligations in `PROOF-NEEDS.adoc` are discharged.
+* Not verified: any claim about runtime behaviour, false-positive rates, or
+  PHP coverage.
+
+[#reproduce]
+== Reproduce it yourself
+
+[source,bash]
+----
+git clone https://github.com/hyperpolymath/sanctify-php
+cd sanctify-php
+git checkout d7634557f35c330ca97c2ccb1fa997d4506b84f2
+for s in symbol declareStrictP namespaceP useP toSourcePos ifP whileP exprStmtP; do
+  printf '%s %s\n' "$s" "$(grep -rnE "^$s( |::)" src | wc -l)"   # expect 0 each
+done
+grep -nE '^transformAddTypeHints' src/Sanctify/Transform/TypeHints.hs  # expect 4 lines
+cabal build all     # expect: 11 errors, "Failed to build sanctify-php-0.2.0"
+----
+
+== One-line characterisation (quote this)
+
+> sanctify-php is a substantial but unfinished Haskell codebase for PHP
+> hardening; at `d7634557` it does not compile, so none of its security
+> analyses has been run or verified.
+
+[#joint-attestation]
+== Joint attestation
+
+We assert that *to the best of our joint belief at the timestamp above, every
+claim in this file is true and was checked as described*, with no intentional
+overclaim and the open gaps stated.
+
+* *Engineering party (AI):* `claude-opus-5-5` (Claude Code) ran the local
+  checks recorded here at `2026-10-07T10:22:34Z`, read CI run `37603063882`,
+  and stands behind the wording as a faithful report of those runs. It did not
+  build the package locally (no cabal).
+* *Owner / maintainer:* Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>.
+  *Attestation not yet given.* The owner attests with the signed commit
+  (`git commit -S`) that lands this file. Until that commit exists, this file
+  is a draft.
+
+[WARNING]
+====
+Do not use `--no-verify`. An affirmation landed past its own repo's gates is
+self-refuting.
+====
+
+_The commit that lands this file changes only this file. Its parent may not be
+the anchor SHA, because `main` moves under squash merges. The claims describe
+the anchor SHA above, and the code at the landing commit is identical to it
+unless `git diff d7634557f35c330ca97c2ccb1fa997d4506b84f2 <landing> -- src test
+app` shows otherwise._
