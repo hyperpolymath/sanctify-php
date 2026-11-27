@@ -46,7 +46,10 @@ run = "just test"
 
 [tasks.lint]
 depends = ["setup"]
-run = 'bunx --no-install --bun prettier --check --no-error-on-unmatched-pattern "**/*.{js,mjs,cjs,json,md}"'
+run = [
+  "just lint",
+  'bunx --no-install --bun prettier --check --no-error-on-unmatched-pattern "**/*.{js,mjs,cjs,json,md}"',
+]
 
 [tasks.fmt]
 depends = ["setup"]
